@@ -30,7 +30,10 @@ export async function loadCloud(uid: string): Promise<CloudData | null> {
   if (!snap.exists()) return null
   const d = snap.data() as Partial<CloudData>
   if (!d || !Array.isArray(d.products)) return null
-  return clean({ products: d.products, quotes: d.quotes || [], settings: d.settings }) as CloudData
+  const products = d.products.filter((p) => p && typeof p.name === 'string')
+  const quotes = (Array.isArray(d.quotes) ? d.quotes : []).filter((r) => r && Array.isArray(r.items))
+  const settings = (d.settings && typeof d.settings === 'object' ? d.settings : {}) as Settings
+  return clean({ products, quotes, settings }) as CloudData
 }
 
 export async function saveCloud(uid: string, data: CloudData): Promise<void> {

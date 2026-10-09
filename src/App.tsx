@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { LogOut, Cloud, CloudOff, Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,28 @@ import { totals, srp, type Product, type Quote, type QuoteItem, type QuoteStatus
 import { cn } from '@/lib/utils'
 
 type Tab = 'dash' | 'new' | 'quotes' | 'products' | 'settings'
+
+class CrashBox extends React.Component<{ children: React.ReactNode }, { err: Error | null }> {
+  state = { err: null as Error | null }
+  static getDerivedStateFromError(err: Error) { return { err } }
+  render() {
+    if (this.state.err) {
+      return (
+        <div className="min-h-screen grid place-items-center p-4">
+          <Card className="w-full max-w-md"><CardContent className="space-y-3 pt-6">
+            <h1 className="font-semibold text-red-600">Something broke. Please screenshot this:</h1>
+            <pre className="text-xs whitespace-pre-wrap bg-slate-100 dark:bg-slate-800 p-3 rounded-md">{String(this.state.err?.message || this.state.err)}</pre>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { localStorage.clear(); location.reload() }}>Clear data + reload</Button>
+              <Button className="flex-1" onClick={() => signOut(auth)}>Sign out</Button>
+            </div>
+          </CardContent></Card>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'dash', label: 'Overview', icon: <LayoutDashboard size={15} /> },
@@ -188,6 +210,7 @@ export default function App() {
   }
 
   return (
+    <CrashBox>
     <div className="min-h-screen">
       <div className="flex h-1"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
       <header className="sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
@@ -544,5 +567,6 @@ export default function App() {
         </div>
       )}
     </div>
+    </CrashBox>
   )
 }
