@@ -108,8 +108,7 @@ export default function App() {
       <header className="sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0">
-            <img src="/logo.png" alt="ChrisRandomTech" className="h-9 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-            <div className="font-semibold tracking-tight">ChrisRandomTech</div>
+            <img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-10 w-auto object-contain" />
           </div>
           <nav className="flex gap-1 text-sm overflow-x-auto">
             {TABS.map((tb) => (
@@ -385,7 +384,7 @@ export default function App() {
             </div>
             <div id="print" className="bg-white text-slate-900 rounded-xl shadow-xl p-8">
               <div className="flex justify-between border-b-2 border-brand-blue pb-4">
-                <div><img src="/logo.png" alt="ChrisRandomTech" className="h-10 w-auto object-contain mb-2" /><div className="text-xl font-bold">{settings.store}</div><div className="text-sm text-slate-600">{settings.address}</div><div className="text-sm text-slate-600">{settings.contact}</div></div>
+                <div><img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-12 w-auto object-contain mb-2" /><div className="text-sm text-slate-600">{settings.store}</div><div className="text-sm text-slate-600">{settings.address}</div><div className="text-sm text-slate-600">{settings.contact}</div></div>
                 <div className="text-right"><div className="text-2xl font-bold"><span className="text-brand-blue">Quota</span><span className="text-brand-red">tion</span></div><div className="num text-sm">{view.no}</div><div className="text-sm text-slate-600">Date: {view.date}</div><div className="text-sm text-slate-600">Valid until: {view.valid}</div></div>
               </div>
               <div className="py-4 text-sm"><div className="text-slate-500">Prepared for</div><div className="font-semibold">{view.customer.name}</div><div>{view.customer.contact}</div><div>{view.customer.address}</div><Badge>{view.status}</Badge></div>
