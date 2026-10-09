@@ -33,7 +33,7 @@ export const blankQuote = (): Quote => ({
 })
 
 const defaultSettings: Settings = {
-  store: 'My Computer Store',
+  store: 'ChrisRandomTech',
   address: '',
   contact: '',
   vat: 12,

@@ -12,6 +12,10 @@ export default {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
         },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
         muted: {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))',
@@ -21,9 +25,17 @@ export default {
           foreground: 'hsl(var(--card-foreground))',
         },
         pcb: {
-          DEFAULT: '#0B6E4F',
-          dark: '#08523b',
-          soft: '#E3F2EC',
+          DEFAULT: '#1a46e0',
+          dark: '#0f2fb3',
+          soft: '#e3e9fd',
+        },
+        brand: {
+          blue: '#1a46e0',
+          bluedark: '#0f2fb3',
+          bluesoft: '#e3e9fd',
+          red: '#e81c24',
+          reddark: '#b31218',
+          redsoft: '#fde5e6',
         },
       },
       borderRadius: {

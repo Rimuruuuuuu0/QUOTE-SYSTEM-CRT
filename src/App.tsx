@@ -102,9 +102,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
+      <div className="flex h-1"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
       <header className="sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-4">
-          <div className="font-semibold tracking-tight">{settings.store}</div>
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
+          <div className="flex items-center gap-2 shrink-0">
+            <img src="/logo.png" alt="ChrisRandomTech" className="h-9 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+            <div className="font-semibold tracking-tight hidden sm:block">{settings.store}</div>
+          </div>
           <nav className="flex gap-1 text-sm overflow-x-auto">
             {TABS.map((tb) => (
               <Button
@@ -174,7 +178,7 @@ export default function App() {
                           <span className="num">{money(p.price)}</span>
                         </button>
                       ))}
-                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, qty: 1, price: 0 }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-pcb border-t">
+                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, qty: 1, price: 0 }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-brand-blue border-t">
                         Add "{search}" as custom item
                       </button>
                     </div>
@@ -350,13 +354,13 @@ export default function App() {
               <Button variant="secondary" onClick={() => setView(null)}>Close</Button>
             </div>
             <div id="print" className="bg-white text-slate-900 rounded-xl shadow-xl p-8">
-              <div className="flex justify-between border-b-2 border-pcb pb-4">
-                <div><div className="text-xl font-bold">{settings.store}</div><div className="text-sm text-slate-600">{settings.address}</div><div className="text-sm text-slate-600">{settings.contact}</div></div>
-                <div className="text-right"><div className="text-2xl font-bold text-pcb">Quotation</div><div className="num text-sm">{view.no}</div><div className="text-sm text-slate-600">Date: {view.date}</div><div className="text-sm text-slate-600">Valid until: {view.valid}</div></div>
+              <div className="flex justify-between border-b-2 border-brand-blue pb-4">
+                <div><img src="/logo.png" alt="ChrisRandomTech" className="h-10 w-auto object-contain mb-2" /><div className="text-xl font-bold">{settings.store}</div><div className="text-sm text-slate-600">{settings.address}</div><div className="text-sm text-slate-600">{settings.contact}</div></div>
+                <div className="text-right"><div className="text-2xl font-bold"><span className="text-brand-blue">Quota</span><span className="text-brand-red">tion</span></div><div className="num text-sm">{view.no}</div><div className="text-sm text-slate-600">Date: {view.date}</div><div className="text-sm text-slate-600">Valid until: {view.valid}</div></div>
               </div>
               <div className="py-4 text-sm"><div className="text-slate-500">Prepared for</div><div className="font-semibold">{view.customer.name}</div><div>{view.customer.contact}</div><div>{view.customer.address}</div><Badge>{view.status}</Badge></div>
               <table className="w-full text-sm">
-                <thead><tr className="bg-pcb-soft text-left"><th className="p-2">Item</th><th className="text-right">Qty</th><th className="text-right">Unit price</th><th className="text-right p-2">Amount</th></tr></thead>
+                <thead><tr className="bg-brand-bluesoft text-left"><th className="p-2">Item</th><th className="text-right">Qty</th><th className="text-right">Unit price</th><th className="text-right p-2">Amount</th></tr></thead>
                 <tbody>{view.items.map((it) => (<tr key={it.key} className="border-b"><td className="p-2">{it.name}</td><td className="num text-right">{it.qty}</td><td className="num text-right">{money(it.price)}</td><td className="num text-right p-2">{money(it.qty * it.price)}</td></tr>))}</tbody>
               </table>
               <div className="ml-auto w-64 mt-4 text-sm space-y-1">
