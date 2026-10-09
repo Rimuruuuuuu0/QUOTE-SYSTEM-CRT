@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { importLoyverseCsv } from '@/lib/loyverse'
 import { useStore, blankQuote, newQuoteNo } from '@/lib/store'
 import { money, uid } from '@/lib/utils'
-import { totals, type Product, type Quote, type QuoteStatus } from '@/lib/types'
+import { totals, srp, type Product, type Quote, type QuoteItem, type QuoteStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 type Tab = 'dash' | 'new' | 'quotes' | 'products' | 'settings'
@@ -47,10 +47,17 @@ export default function App() {
     setQ((prev) => {
       const ex = prev.items.find((i) => i.pid === p.id)
       if (ex) return { ...prev, items: prev.items.map((i) => (i.pid === p.id ? { ...i, qty: i.qty + 1 } : i)) }
-      return { ...prev, items: [...prev.items, { key: uid(), pid: p.id, name: p.name, qty: 1, price: p.price }] }
+      const cost = p.cost || 0
+      const margin = settings.markup || 20
+      return { ...prev, items: [...prev.items, { key: uid(), pid: p.id, name: p.name, qty: 1, cost, margin, price: cost ? srp(cost, margin) : p.price }] }
     })
     setSearch('')
   }
+
+  const setItem = (i: number, patch: Partial<QuoteItem>) => setQ((prev) => ({ ...prev, items: prev.items.map((x, xi) => (xi === i ? { ...x, ...patch } : x)) }))
+
+  const setCostMargin = (i: number, cost: number, margin: number) =>
+    setItem(i, { cost, margin, price: srp(cost, margin) })
 
   const saveQuote = (show: boolean) => {
     if (!q.items.length) { alert('Add at least one item before saving.'); return }
@@ -72,9 +79,9 @@ export default function App() {
     return (filter === 'all' || r.status === filter) && hay.includes(s)
   })
 
-  const t = totals(q, settings.vat)
+  const t = totals(q)
   const accepted = quotes.filter((x) => x.status === 'Accepted')
-  const acceptedVal = accepted.reduce((s, x) => s + totals(x, settings.vat).total, 0)
+  const acceptedVal = accepted.reduce((s, x) => s + totals(x).total, 0)
 
   const saveProduct = () => {
     if (!pf || !pf.name.trim()) { alert('Enter a product name.'); return }
@@ -149,7 +156,7 @@ export default function App() {
               {quotes.slice(0, 5).map((r) => (
                 <button key={r.id} onClick={() => setView(r)} className="w-full flex justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
                   <span><span className="num text-sm">{r.no}</span><span className="ml-2">{r.customer.name || 'No name'}</span></span>
-                  <span className="num">{money(totals(r, settings.vat).total)}</span>
+                  <span className="num">{money(totals(r).total)}</span>
                 </button>
               ))}
               {!quotes.length && <p className="px-4 py-8 text-center text-slate-500">No quotes yet. Create your first quote.</p>}
@@ -181,21 +188,23 @@ export default function App() {
                           <span className="num">{money(p.price)}</span>
                         </button>
                       ))}
-                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, qty: 1, price: 0 }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-brand-blue border-t">
+                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, qty: 1, cost: 0, margin: settings.markup || 20, price: 0 }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-brand-blue border-t">
                         Add "{search}" as custom item
                       </button>
                     </div>
                   )}
                 </div>
                 <div className="mt-4 overflow-x-auto">
-                  <table className="w-full text-sm min-w-[520px]">
-                    <thead className="text-left text-slate-500"><tr><th className="py-2 font-medium">Item</th><th className="font-medium w-20">Qty</th><th className="font-medium w-32">Unit price</th><th className="font-medium w-32 text-right">Amount</th><th className="w-8" /></tr></thead>
+                  <table className="w-full text-sm min-w-[680px]">
+                    <thead className="text-left text-slate-500"><tr><th className="py-2 font-medium">Item</th><th className="font-medium w-16">Qty</th><th className="font-medium w-28">Cost (supplier)</th><th className="font-medium w-20">+ %</th><th className="font-medium w-28">SRP</th><th className="font-medium w-28 text-right">Amount</th><th className="w-8" /></tr></thead>
                     <tbody>
                       {q.items.map((it, i) => (
                         <tr key={it.key} className="border-t border-slate-100 dark:border-slate-800">
-                          <td className="py-2 pr-2"><Input value={it.name} onChange={(e) => setQ({ ...q, items: q.items.map((x, xi) => xi === i ? { ...x, name: e.target.value } : x) })} /></td>
-                          <td className="pr-2"><Input type="number" min={1} className="num" value={it.qty} onChange={(e) => setQ({ ...q, items: q.items.map((x, xi) => xi === i ? { ...x, qty: Number(e.target.value) } : x) })} /></td>
-                          <td className="pr-2"><Input type="number" min={0} className="num" value={it.price} onChange={(e) => setQ({ ...q, items: q.items.map((x, xi) => xi === i ? { ...x, price: Number(e.target.value) } : x) })} /></td>
+                          <td className="py-2 pr-2"><Input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} /></td>
+                          <td className="pr-2"><Input type="number" min={1} className="num" value={it.qty} onChange={(e) => setItem(i, { qty: Number(e.target.value) })} /></td>
+                          <td className="pr-2"><Input type="number" min={0} className="num" value={it.cost || 0} onChange={(e) => setCostMargin(i, Number(e.target.value), it.margin ?? settings.markup ?? 20)} /></td>
+                          <td className="pr-2"><Input type="number" min={0} className="num" value={it.margin ?? settings.markup ?? 20} onChange={(e) => setCostMargin(i, it.cost || 0, Number(e.target.value))} /></td>
+                          <td className="pr-2"><Input type="number" min={0} className="num font-medium" value={it.price} onChange={(e) => setItem(i, { price: Number(e.target.value) })} /></td>
                           <td className="num text-right">{money(it.qty * it.price)}</td>
                           <td><button className="text-slate-400 hover:text-red-600 px-2" onClick={() => setQ({ ...q, items: q.items.filter((_, xi) => xi !== i) })}><X size={14} /></button></td>
                         </tr>
@@ -203,6 +212,7 @@ export default function App() {
                     </tbody>
                   </table>
                   {!q.items.length && <p className="py-8 text-center text-slate-500">No items yet. Search above to add products.</p>}
+                  {!!q.items.length && <p className="py-2 text-xs text-slate-400">SRP auto-computes from Cost + %. You can still type an SRP manually.</p>}
                 </div>
               </CardContent></Card>
 
@@ -221,8 +231,11 @@ export default function App() {
                   <Input type="number" min={0} className="num !w-24" value={q.discount} onChange={(e) => setQ({ ...q, discount: Number(e.target.value) })} />
                   <Select className="!w-16" value={q.discountType} onChange={(e) => setQ({ ...q, discountType: e.target.value as '%' | '₱' })}><option value="%">%</option><option value="₱">₱</option></Select>
                 </div>
-                <div className="flex justify-between text-sm"><span>VAT ({settings.vat}%)</span><span className="num">{money(t.vat)}</span></div>
                 <div className="flex justify-between pt-3 border-t text-lg font-semibold"><span>Total</span><span className="num">{money(t.total)}</span></div>
+                <div className="rounded-md bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs space-y-1 text-slate-500">
+                  <div className="flex justify-between"><span>Total supplier cost</span><span className="num">{money(t.cost)}</span></div>
+                  <div className="flex justify-between font-semibold text-emerald-600"><span>Est. profit</span><span className="num">{money(t.profit)}</span></div>
+                </div>
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   <Button className="col-span-2" onClick={() => saveQuote(true)}><Save size={15} /> Save quotation</Button>
                   <Button variant="outline" onClick={() => saveQuote(false)}>Save draft</Button>
@@ -281,7 +294,7 @@ export default function App() {
                             <option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option>
                           </Select>
                         </td>
-                        <td className="num text-right">{money(totals(r, settings.vat).total)}</td>
+                        <td className="num text-right">{money(totals(r).total)}</td>
                         <td className="p-3 text-right whitespace-nowrap space-x-1">
                           <Button variant="default" size="sm" onClick={() => { setQ(JSON.parse(JSON.stringify(r))); setTab('new') }}><FolderOpen size={12} /> Load</Button>
                           <Button variant="outline" size="sm" onClick={() => setView(r)}>View</Button>
@@ -346,11 +359,12 @@ export default function App() {
             <Card>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[600px]">
-                  <thead className="text-left text-slate-500"><tr className="border-b"><th className="p-3 font-medium">Product</th><th>Category</th><th className="text-right">Price</th><th className="text-right">Stock</th><th className="p-3" /></tr></thead>
+                  <thead className="text-left text-slate-500"><tr className="border-b"><th className="p-3 font-medium">Product</th><th>Category</th><th className="text-right">Cost</th><th className="text-right">SRP</th><th className="text-right">Stock</th><th className="p-3" /></tr></thead>
                   <tbody>
                     {products.filter((x) => (catFilter === 'All' || x.category === catFilter) && (x.name + x.category).toLowerCase().includes(psearch.toLowerCase())).map((p) => (
                       <tr key={p.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
                         <td className="p-3">{p.name}</td><td><Badge className="uppercase tracking-wide">{p.category}</Badge></td>
+                        <td className="num text-right text-slate-500">{p.cost ? money(p.cost) : '—'}</td>
                         <td className="num text-right">{money(p.price)}</td>
                         <td className={cn('num text-right', p.stock <= 2 && 'text-amber-600')}>{p.stock}</td>
                         <td className="p-3 text-right whitespace-nowrap space-x-1">
@@ -377,7 +391,7 @@ export default function App() {
               <label className="block text-sm">Address<Input className="mt-1" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} /></label>
               <label className="block text-sm">Phone or email<Input className="mt-1" value={settings.contact} onChange={(e) => setSettings({ ...settings, contact: e.target.value })} /></label>
               <div className="grid grid-cols-3 gap-3">
-                <label className="block text-sm">VAT %<Input type="number" className="mt-1 num" value={settings.vat} onChange={(e) => setSettings({ ...settings, vat: Number(e.target.value) })} /></label>
+                <label className="block text-sm">Default markup %<Input type="number" className="mt-1 num" value={settings.markup} onChange={(e) => setSettings({ ...settings, markup: Number(e.target.value) })} /></label>
                 <label className="block text-sm">Valid days<Input type="number" className="mt-1 num" value={settings.validity} onChange={(e) => setSettings({ ...settings, validity: Number(e.target.value) })} /></label>
                 <label className="block text-sm">Prefix<Input className="mt-1" value={settings.prefix} onChange={(e) => setSettings({ ...settings, prefix: e.target.value })} /></label>
               </div>
@@ -400,7 +414,10 @@ export default function App() {
                 {CATS.map((c) => <option key={c}>{c}</option>)}
               </Select>
               <div className="grid grid-cols-2 gap-3">
-                <label className="text-sm">Price<Input type="number" min={0} className="num mt-1" value={pf.price} onChange={(e) => setPf({ ...pf, price: Number(e.target.value) })} /></label>
+                <label className="text-sm">Supplier cost<Input type="number" min={0} className="num mt-1" value={pf.cost || 0} onChange={(e) => setPf({ ...pf, cost: Number(e.target.value), price: srp(Number(e.target.value), settings.markup || 20) })} /></label>
+                <label className="text-sm">SRP<Input type="number" min={0} className="num mt-1" value={pf.price} onChange={(e) => setPf({ ...pf, price: Number(e.target.value) })} /></label>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <label className="text-sm">Stock<Input type="number" min={0} className="num mt-1" value={pf.stock} onChange={(e) => setPf({ ...pf, stock: Number(e.target.value) })} /></label>
               </div>
               <div className="flex justify-end gap-2 pt-2">
@@ -430,10 +447,9 @@ export default function App() {
                 <tbody>{view.items.map((it) => (<tr key={it.key} className="border-b"><td className="p-2">{it.name}</td><td className="num text-right">{it.qty}</td><td className="num text-right">{money(it.price)}</td><td className="num text-right p-2">{money(it.qty * it.price)}</td></tr>))}</tbody>
               </table>
               <div className="ml-auto w-64 mt-4 text-sm space-y-1">
-                <div className="flex justify-between"><span>Subtotal</span><span className="num">{money(totals(view, settings.vat).sub)}</span></div>
-                {totals(view, settings.vat).disc > 0 && <div className="flex justify-between"><span>Discount</span><span className="num">-{money(totals(view, settings.vat).disc)}</span></div>}
-                <div className="flex justify-between"><span>VAT ({settings.vat}%)</span><span className="num">{money(totals(view, settings.vat).vat)}</span></div>
-                <div className="flex justify-between text-base font-bold border-t pt-2"><span>Total</span><span className="num">{money(totals(view, settings.vat).total)}</span></div>
+                <div className="flex justify-between"><span>Subtotal</span><span className="num">{money(totals(view).sub)}</span></div>
+                {totals(view).disc > 0 && <div className="flex justify-between"><span>Discount</span><span className="num">-{money(totals(view).disc)}</span></div>}
+                <div className="flex justify-between text-base font-bold border-t pt-2"><span>Total</span><span className="num">{money(totals(view).total)}</span></div>
               </div>
               {view.notes && <div className="mt-6 text-sm text-slate-600 whitespace-pre-line">{view.notes}</div>}
             </div>

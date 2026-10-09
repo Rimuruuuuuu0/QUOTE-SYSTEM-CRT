@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Product, Quote, Settings } from './types'
+import type { Product, Quote, QuoteItem, Settings } from './types'
 import { normalizeCategory } from './categories'
 import { iso } from './utils'
 
@@ -37,7 +37,7 @@ const defaultSettings: Settings = {
   store: 'ChrisRandomTech',
   address: '',
   contact: '',
-  vat: 12,
+  markup: 20,
   validity: 7,
   prefix: 'Q',
   counter: 0,
@@ -62,9 +62,17 @@ function load() {
         ...p,
         category: normalizeCategory(p.name, CAT_FIX[p.category] || p.category),
       }))
+      const quotes = ((d.quotes || []) as Quote[]).map((r) => ({
+        ...r,
+        items: (r.items || []).map((it: QuoteItem) => ({
+          ...it,
+          cost: it.cost ?? 0,
+          margin: it.margin ?? settings.markup ?? 20,
+        })),
+      }))
       return {
         products,
-        quotes: (d.quotes || []) as Quote[],
+        quotes,
         settings,
       }
     }
