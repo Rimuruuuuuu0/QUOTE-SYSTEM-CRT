@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 
 type Tab = 'dash' | 'new' | 'quotes' | 'products' | 'settings'
 
-class CrashBox extends React.Component<{ children: React.ReactNode }, { err: Error | null }> {
+export class CrashBox extends React.Component<{ children: React.ReactNode }, { err: Error | null }> {
   state = { err: null as Error | null }
   static getDerivedStateFromError(err: Error) { return { err } }
   render() {
@@ -138,7 +138,7 @@ export default function App() {
   const matches = useMemo(() => {
     const s = search.toLowerCase()
     if (!s) return []
-    return products.filter((p) => (p.name + p.category).toLowerCase().includes(s)).slice(0, 8)
+    return products.filter((p) => ((p.name || '') + (p.category || '')).toLowerCase().includes(s)).slice(0, 8)
   }, [search, products])
 
   const addItem = (p: Product) => {
@@ -173,7 +173,8 @@ export default function App() {
 
   const filteredQuotes = quotes.filter((r) => {
     const s = qsearch.toLowerCase()
-    const hay = (r.no + ' ' + r.customer.name + ' ' + r.items.map((i) => i.name).join(' ')).toLowerCase()
+    const items = Array.isArray(r.items) ? r.items : []
+    const hay = ((r.no || '') + ' ' + (r.customer?.name || '') + ' ' + items.map((i) => i.name || '').join(' ')).toLowerCase()
     return (filter === 'all' || r.status === filter) && hay.includes(s)
   })
 
@@ -210,7 +211,6 @@ export default function App() {
   }
 
   return (
-    <CrashBox>
     <div className="min-h-screen">
       <div className="flex h-1"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
       <header className="sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
@@ -262,7 +262,7 @@ export default function App() {
               <CardHeader>Recent quotes</CardHeader>
               {quotes.slice(0, 5).map((r) => (
                 <button key={r.id} onClick={() => setView(r)} className="w-full flex justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
-                  <span><span className="num text-sm">{r.no}</span><span className="ml-2">{r.customer.name || 'No name'}</span></span>
+                  <span><span className="num text-sm">{r.no}</span><span className="ml-2">{r.customer?.name || 'No name'}</span></span>
                   <span className="num">{money(totals(r).total)}</span>
                 </button>
               ))}
@@ -397,7 +397,7 @@ export default function App() {
                     {filteredQuotes.map((r) => (
                       <tr key={r.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
                         <td className="p-3 num">{r.no}</td>
-                        <td>{r.customer.name || '—'}</td>
+                        <td>{r.customer?.name || '—'}</td>
                         <td>{r.date}</td>
                         <td>
                           <Select className="!w-32 !py-1" value={r.status} onChange={(e) => { const s = e.target.value as QuoteStatus; setQuotes((prev) => prev.map((x) => x.id === r.id ? { ...x, status: s } : x)) }}>
@@ -551,10 +551,10 @@ export default function App() {
                 <div><img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-12 w-auto object-contain mb-2" /><div className="text-sm text-slate-600">{settings.store}</div><div className="text-sm text-slate-600">{settings.address}</div><div className="text-sm text-slate-600">{settings.contact}</div></div>
                 <div className="text-right"><div className="text-2xl font-bold"><span className="text-brand-blue">Quota</span><span className="text-brand-red">tion</span></div><div className="num text-sm">{view.no}</div><div className="text-sm text-slate-600">Date: {view.date}</div><div className="text-sm text-slate-600">Valid until: {view.valid}</div></div>
               </div>
-              <div className="py-4 text-sm"><div className="text-slate-500">Prepared for</div><div className="font-semibold">{view.customer.name}</div><div>{view.customer.contact}</div><div>{view.customer.address}</div><Badge>{view.status}</Badge></div>
+              <div className="py-4 text-sm"><div className="text-slate-500">Prepared for</div><div className="font-semibold">{view.customer?.name}</div><div>{view.customer?.contact}</div><div>{view.customer?.address}</div><Badge>{view.status}</Badge></div>
               <table className="w-full text-sm">
                 <thead><tr className="bg-brand-bluesoft text-left"><th className="p-2">Item</th><th className="text-right">Qty</th><th className="text-right">Unit price</th><th className="text-right p-2">Amount</th></tr></thead>
-                <tbody>{view.items.map((it) => (<tr key={it.key} className="border-b"><td className="p-2">{it.name}</td><td className="num text-right">{it.qty}</td><td className="num text-right">{money(it.price)}</td><td className="num text-right p-2">{money(it.qty * it.price)}</td></tr>))}</tbody>
+                <tbody>{(view.items || []).map((it) => (<tr key={it.key} className="border-b"><td className="p-2">{it.name}</td><td className="num text-right">{it.qty}</td><td className="num text-right">{money(it.price)}</td><td className="num text-right p-2">{money(it.qty * it.price)}</td></tr>))}</tbody>
               </table>
               <div className="ml-auto w-64 mt-4 text-sm space-y-1">
                 <div className="flex justify-between"><span>Subtotal</span><span className="num">{money(totals(view).sub)}</span></div>
@@ -567,6 +567,5 @@ export default function App() {
         </div>
       )}
     </div>
-    </CrashBox>
   )
 }

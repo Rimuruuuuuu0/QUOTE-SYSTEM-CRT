@@ -66,8 +66,9 @@ export function srp(cost: number, margin: number) {
 }
 
 export function totals(r: Pick<Quote, 'items' | 'discount' | 'discountType'>) {
-  const sub = r.items.reduce((s, i) => s + (i.qty || 0) * (i.price || 0), 0)
-  const cost = r.items.reduce((s, i) => s + (i.qty || 0) * (i.cost || 0), 0)
+  const items = Array.isArray(r.items) ? r.items : []
+  const sub = items.reduce((s, i) => s + (i.qty || 0) * (i.price || 0), 0)
+  const cost = items.reduce((s, i) => s + (i.qty || 0) * (i.cost || 0), 0)
   const d = r.discountType === '%' ? (sub * (r.discount || 0)) / 100 : r.discount || 0
   const disc = Math.min(d, sub)
   const total = sub - disc

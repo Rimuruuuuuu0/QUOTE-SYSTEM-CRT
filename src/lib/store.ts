@@ -58,18 +58,23 @@ function load() {
       if (['My Computer Store', 'My PC Store', 'My pc store'].includes(settings.store)) {
         settings.store = 'ChrisRandomTech'
       }
-      const products = ((d.products?.length ? d.products : seed) as Product[]).map((p) => ({
-        ...p,
-        category: normalizeCategory(p.name, CAT_FIX[p.category] || p.category),
-      }))
-      const quotes = ((d.quotes || []) as Quote[]).map((r) => ({
-        ...r,
-        items: (r.items || []).map((it: QuoteItem) => ({
-          ...it,
-          cost: it.cost ?? 0,
-          margin: it.margin ?? settings.markup ?? 20,
-        })),
-      }))
+      const products = ((Array.isArray(d.products) && d.products.length ? d.products : seed) as Product[])
+        .filter((p) => p && typeof p.name === 'string')
+        .map((p) => ({
+          ...p,
+          category: normalizeCategory(p.name, CAT_FIX[p.category] || p.category),
+        }))
+      const quotes = ((Array.isArray(d.quotes) ? d.quotes : []) as Quote[])
+        .filter((r) => r && typeof r === 'object')
+        .map((r) => ({
+          ...r,
+          customer: { name: '', contact: '', address: '', ...(r.customer && typeof r.customer === 'object' ? r.customer : {}) },
+          items: (Array.isArray(r.items) ? r.items : []).map((it: QuoteItem) => ({
+            ...it,
+            cost: it.cost ?? 0,
+            margin: it.margin ?? settings.markup ?? 20,
+          })),
+        }))
       return {
         products,
         quotes,
