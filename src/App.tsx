@@ -232,10 +232,6 @@ export default function App() {
                   <Select className="!w-16" value={q.discountType} onChange={(e) => setQ({ ...q, discountType: e.target.value as '%' | '₱' })}><option value="%">%</option><option value="₱">₱</option></Select>
                 </div>
                 <div className="flex justify-between pt-3 border-t text-lg font-semibold"><span>Total</span><span className="num">{money(t.total)}</span></div>
-                <div className="rounded-md bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs space-y-1 text-slate-500">
-                  <div className="flex justify-between"><span>Total supplier cost</span><span className="num">{money(t.cost)}</span></div>
-                  <div className="flex justify-between font-semibold text-emerald-600"><span>Est. profit</span><span className="num">{money(t.profit)}</span></div>
-                </div>
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   <Button className="col-span-2" onClick={() => saveQuote(true)}><Save size={15} /> Save quotation</Button>
                   <Button variant="outline" onClick={() => saveQuote(false)}>Save draft</Button>
@@ -244,6 +240,13 @@ export default function App() {
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" className="flex-1" onClick={resetQuote}>Clear</Button>
                 </div>
+              </CardContent></Card>
+              <Card className="border-dashed"><CardContent className="space-y-2">
+                <CardTitle className="text-sm uppercase tracking-wide text-slate-500">Costing · internal only</CardTitle>
+                <div className="flex justify-between text-sm"><span>Supplier cost</span><span className="num">{money(t.cost)}</span></div>
+                <div className="flex justify-between text-sm"><span>Margin</span><span className="num">{t.sub ? Math.round((t.profit / t.sub) * 100) : 0}%</span></div>
+                <div className="flex justify-between pt-2 border-t font-semibold text-emerald-600"><span>Est. profit</span><span className="num">{money(t.profit)}</span></div>
+                <p className="text-[11px] text-slate-400">Not shown on the customer printout.</p>
               </CardContent></Card>
             </aside>
           </section>
