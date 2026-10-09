@@ -431,7 +431,7 @@ export default function App() {
               <h1 className="text-2xl font-semibold">Product catalog</h1>
               <div className="flex gap-2 flex-wrap">
                 <Input className="!w-56" placeholder="Search products" value={psearch} onChange={(e) => setPsearch(e.target.value)} />
-                <Button variant="outline" onClick={() => document.getElementById('loyverse-csv')?.click()}><Upload size={13} /> Import Loyverse</Button>
+                <Button variant="outline" onClick={() => document.getElementById('loyverse-csv')?.click()}><Upload size={13} /> Import</Button>
                 <Button variant="outline" title="Set all product prices to 0" onClick={() => { if (confirm('Remove ALL prices? Every product price becomes 0.')) setProducts((prev) => prev.map((p) => ({ ...p, price: 0 }))) }}>Clear prices</Button>
                 <input id="loyverse-csv" type="file" accept=".csv" className="hidden" onChange={(e) => {
                   const f = e.target.files?.[0]; if (!f) return
