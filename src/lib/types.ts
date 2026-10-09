@@ -18,6 +18,7 @@ export interface Product {
   category: string
   price: number
   stock: number
+  cost?: number
 }
 
 export interface QuoteItem {

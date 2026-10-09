@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input, Textarea, Select } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { importLoyverseCsv } from '@/lib/loyverse'
 import { useStore, blankQuote, newQuoteNo } from '@/lib/store'
 import { money, uid } from '@/lib/utils'
 import { totals, type Product, type Quote, type QuoteStatus } from '@/lib/types'
@@ -304,8 +305,19 @@ export default function App() {
           <section className="space-y-4">
             <div className="flex flex-wrap gap-3 justify-between items-center">
               <h1 className="text-2xl font-semibold">Product catalog</h1>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Input className="!w-56" placeholder="Search products" value={psearch} onChange={(e) => setPsearch(e.target.value)} />
+                <Button variant="outline" onClick={() => document.getElementById('loyverse-csv')?.click()}><Upload size={13} /> Import Loyverse</Button>
+                <input id="loyverse-csv" type="file" accept=".csv" className="hidden" onChange={(e) => {
+                  const f = e.target.files?.[0]; if (!f) return
+                  f.text().then((txt) => {
+                    try {
+                      const r = importLoyverseCsv(txt, products)
+                      setProducts([...r.products])
+                      alert(`Loyverse import done. Added ${r.added}, updated ${r.updated}, skipped ${r.skipped}.`)
+                    } catch (x: unknown) { alert(x instanceof Error ? x.message : 'Could not read that CSV.') }
+                  }); e.target.value = ''
+                }} />
                 <Button onClick={() => setPf({ name: '', category: 'Other', price: 0, stock: 0 })}>Add product</Button>
               </div>
             </div>
