@@ -30,6 +30,7 @@ export default function App() {
   const [search, setSearch] = useState('')
   const [qsearch, setQsearch] = useState('')
   const [psearch, setPsearch] = useState('')
+  const [catFilter, setCatFilter] = useState<string>('All')
   const [filter, setFilter] = useState<'all' | QuoteStatus>('all')
   const [view, setView] = useState<Quote | null>(null)
   const [pf, setPf] = useState<(Omit<Product, 'id'> & { id?: number | string }) | null>(null)
@@ -323,11 +324,31 @@ export default function App() {
               </div>
             </div>
             <Card>
+              <CardContent className="flex flex-wrap gap-2">
+                {['All', ...CATS].map((c) => {
+                  const n = c === 'All' ? products.length : products.filter((p) => p.category === c).length
+                  if (c !== 'All' && n === 0) return null
+                  const active = catFilter === c
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => setCatFilter(c)}
+                      className={active
+                        ? 'inline-flex items-center gap-1.5 rounded-full bg-brand-blue px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-white'
+                        : 'inline-flex items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide hover:bg-slate-100 dark:hover:bg-slate-800'}
+                    >
+                      {c}<span className={active ? 'opacity-80 num' : 'text-slate-400 num'}>{n}</span>
+                    </button>
+                  )
+                })}
+              </CardContent>
+            </Card>
+            <Card>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[600px]">
                   <thead className="text-left text-slate-500"><tr className="border-b"><th className="p-3 font-medium">Product</th><th>Category</th><th className="text-right">Price</th><th className="text-right">Stock</th><th className="p-3" /></tr></thead>
                   <tbody>
-                    {products.filter((x) => (x.name + x.category).toLowerCase().includes(psearch.toLowerCase())).map((p) => (
+                    {products.filter((x) => (catFilter === 'All' || x.category === catFilter) && (x.name + x.category).toLowerCase().includes(psearch.toLowerCase())).map((p) => (
                       <tr key={p.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
                         <td className="p-3">{p.name}</td><td><Badge className="uppercase tracking-wide">{p.category}</Badge></td>
                         <td className="num text-right">{money(p.price)}</td>
@@ -340,6 +361,9 @@ export default function App() {
                     ))}
                   </tbody>
                 </table>
+                {!products.filter((x) => (catFilter === 'All' || x.category === catFilter) && (x.name + x.category).toLowerCase().includes(psearch.toLowerCase())).length && (
+                  <p className="py-10 text-center text-slate-500">No products in {catFilter}. Try another category or search.</p>
+                )}
               </div>
             </Card>
           </section>
