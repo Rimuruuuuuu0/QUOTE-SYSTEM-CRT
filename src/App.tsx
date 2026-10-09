@@ -114,6 +114,12 @@ export default function App() {
     }
   }
 
+  const matches = useMemo(() => {
+    const s = search.toLowerCase()
+    if (!s) return []
+    return products.filter((p) => ((p.name || '') + (p.category || '')).toLowerCase().includes(s)).slice(0, 8)
+  }, [search, products])
+
   if (!authReady) {
     return <div className="min-h-screen grid place-items-center text-slate-500 text-sm">Loading…</div>
   }
@@ -134,12 +140,6 @@ export default function App() {
   }
 
   const resetQuote = () => setQ({ ...blankQuote(), ...newQuoteNo(settings) })
-
-  const matches = useMemo(() => {
-    const s = search.toLowerCase()
-    if (!s) return []
-    return products.filter((p) => ((p.name || '') + (p.category || '')).toLowerCase().includes(s)).slice(0, 8)
-  }, [search, products])
 
   const addItem = (p: Product) => {
     setQ((prev) => {
