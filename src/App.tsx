@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2 } from 'lucide-react'
+import { Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input, Textarea, Select } from '@/components/ui/input'
@@ -64,9 +64,11 @@ export default function App() {
     if (show) setView(copy)
   }
 
-  const filteredQuotes = quotes.filter(
-    (r) => (filter === 'all' || r.status === filter) && (r.no + r.customer.name).toLowerCase().includes(qsearch.toLowerCase())
-  )
+  const filteredQuotes = quotes.filter((r) => {
+    const s = qsearch.toLowerCase()
+    const hay = (r.no + ' ' + r.customer.name + ' ' + r.items.map((i) => i.name).join(' ')).toLowerCase()
+    return (filter === 'all' || r.status === filter) && hay.includes(s)
+  })
 
   const t = totals(q, settings.vat)
   const accepted = quotes.filter((x) => x.status === 'Accepted')
@@ -220,9 +222,13 @@ export default function App() {
                 </div>
                 <div className="flex justify-between text-sm"><span>VAT ({settings.vat}%)</span><span className="num">{money(t.vat)}</span></div>
                 <div className="flex justify-between pt-3 border-t text-lg font-semibold"><span>Total</span><span className="num">{money(t.total)}</span></div>
-                <div className="flex gap-2 pt-2">
-                  <Button className="flex-1" onClick={() => saveQuote(true)}>Save and preview</Button>
-                  <Button variant="outline" onClick={resetQuote}>Clear</Button>
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <Button className="col-span-2" onClick={() => saveQuote(true)}><Save size={15} /> Save quotation</Button>
+                  <Button variant="outline" onClick={() => saveQuote(false)}>Save draft</Button>
+                  <Button variant="outline" onClick={() => setTab('quotes')}><FolderOpen size={15} /> Load</Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" className="flex-1" onClick={resetQuote}>Clear</Button>
                 </div>
               </CardContent></Card>
             </aside>
@@ -232,18 +238,37 @@ export default function App() {
         {tab === 'quotes' && (
           <section className="space-y-4">
             <div className="flex flex-wrap gap-3 justify-between items-center">
-              <h1 className="text-2xl font-semibold">Quotes</h1>
+              <h1 className="text-2xl font-semibold">Saved quotations</h1>
               <div className="flex gap-2">
-                <Input className="!w-56" placeholder="Search customer or number" value={qsearch} onChange={(e) => setQsearch(e.target.value)} />
-                <Select className="!w-36" value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
-                  <option value="all">All statuses</option><option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option>
-                </Select>
+                <Button variant="outline" size="sm" onClick={() => document.getElementById('load-quote-file')?.click()}><Upload size={13} /> Load from file</Button>
+                <input id="load-quote-file" type="file" accept=".json" className="hidden" onChange={(e) => {
+                  const f = e.target.files?.[0]; if (!f) return
+                  f.text().then((txt) => {
+                    try {
+                      const d = JSON.parse(txt)
+                      const list = Array.isArray(d) ? d : d.quotes || [d]
+                      const fixed = list.map((r: Quote) => ({ ...r, id: r.id || uid() }))
+                      setQuotes((prev) => [...fixed, ...prev]); alert(`Loaded ${fixed.length} quotation(s).`)
+                    } catch { alert('Not a valid quotation file.') }
+                  }); e.target.value = ''
+                }} />
               </div>
             </div>
+            <Card><CardContent className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input className="pl-9" placeholder="Search quotation — customer, number, item…" value={qsearch} onChange={(e) => setQsearch(e.target.value)} />
+              </div>
+              <Select className="sm:!w-40" value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
+                <option value="all">All statuses</option><option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option>
+              </Select>
+              {(qsearch || filter !== 'all') && <Button variant="ghost" size="sm" onClick={() => { setQsearch(''); setFilter('all') }}>Clear</Button>}
+            </CardContent></Card>
+            <p className="text-sm text-slate-500">{filteredQuotes.length} of {quotes.length} quotations {qsearch && <>matching “{qsearch}”</>}</p>
             <Card>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[640px]">
-                  <thead className="text-left text-slate-500"><tr className="border-b"><th className="p-3 font-medium">No.</th><th>Customer</th><th>Date</th><th>Status</th><th className="text-right">Total</th><th className="p-3" /></tr></thead>
+                <table className="w-full text-sm min-w-[720px]">
+                  <thead className="text-left text-slate-500"><tr className="border-b"><th className="p-3 font-medium">No.</th><th>Customer</th><th>Date</th><th>Status</th><th className="text-right">Total</th><th className="p-3 text-right">Actions</th></tr></thead>
                   <tbody>
                     {filteredQuotes.map((r) => (
                       <tr key={r.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
@@ -257,15 +282,20 @@ export default function App() {
                         </td>
                         <td className="num text-right">{money(totals(r, settings.vat).total)}</td>
                         <td className="p-3 text-right whitespace-nowrap space-x-1">
+                          <Button variant="default" size="sm" onClick={() => { setQ(JSON.parse(JSON.stringify(r))); setTab('new') }}><FolderOpen size={12} /> Load</Button>
                           <Button variant="outline" size="sm" onClick={() => setView(r)}>View</Button>
-                          <Button variant="outline" size="sm" onClick={() => { setQ(JSON.parse(JSON.stringify(r))); setTab('new') }}><Pencil size={12} /> Edit</Button>
+                          <Button variant="outline" size="sm" title="Save this quotation to a file" onClick={() => {
+                            const a = document.createElement('a')
+                            a.href = URL.createObjectURL(new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' }))
+                            a.download = `${r.no}.json`; a.click()
+                          }}><Download size={12} /> Save</Button>
                           <Button variant="ghost" size="sm" className="text-red-600" onClick={() => { if (confirm(`Delete ${r.no}?`)) setQuotes((prev) => prev.filter((x) => x.id !== r.id)) }}><Trash2 size={12} /></Button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                {!filteredQuotes.length && <p className="py-10 text-center text-slate-500">No quotes match.</p>}
+                {!filteredQuotes.length && <p className="py-10 text-center text-slate-500">No quotations found. Try another search.</p>}
               </div>
             </Card>
           </section>
