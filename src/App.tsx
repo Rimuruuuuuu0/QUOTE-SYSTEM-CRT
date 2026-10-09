@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react'
-import { Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { LogOut, Cloud, CloudOff, Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input, Textarea, Select } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { importLoyverseCsv } from '@/lib/loyverse'
+import { auth, loadCloud, saveCloud } from '@/lib/firebase'
 import { useStore, blankQuote, newQuoteNo } from '@/lib/store'
 import { money, uid } from '@/lib/utils'
 import { totals, srp, type Product, type Quote, type QuoteItem, type QuoteStatus } from '@/lib/types'
@@ -34,6 +36,80 @@ export default function App() {
   const [filter, setFilter] = useState<'all' | QuoteStatus>('all')
   const [view, setView] = useState<Quote | null>(null)
   const [pf, setPf] = useState<(Omit<Product, 'id'> & { id?: number | string }) | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [authReady, setAuthReady] = useState(false)
+  const [email, setEmail] = useState('')
+  const [pass, setPass] = useState('')
+  const [loginErr, setLoginErr] = useState('')
+  const [cloud, setCloud] = useState<'loading' | 'ready' | 'saving'>('loading')
+  const savedRef = useRef('')
+
+  useEffect(() => onAuthStateChanged(auth, (u) => { setUser(u); setAuthReady(true) }), [])
+
+  // Load cloud data on sign in (cloud wins; local stays as offline backup)
+  useEffect(() => {
+    if (!user) return
+    setCloud('loading')
+    loadCloud(user.uid)
+      .then((d) => {
+        if (d) {
+          setProducts(d.products)
+          setQuotes(d.quotes)
+          setSettings((s) => ({ ...s, ...d.settings }))
+          savedRef.current = JSON.stringify(d)
+        } else {
+          savedRef.current = ''
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCloud('ready'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
+  // Save to cloud (debounced). Only saves when data differs from last save/load.
+  useEffect(() => {
+    if (!user || cloud !== 'ready') return
+    const data = { products, quotes, settings }
+    const snap = JSON.stringify(data)
+    if (snap === savedRef.current) return
+    const h = setTimeout(() => {
+      setCloud('saving')
+      saveCloud(user.uid, data)
+        .then(() => { savedRef.current = snap })
+        .catch(() => {})
+        .finally(() => setCloud('ready'))
+    }, 1500)
+    return () => clearTimeout(h)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, quotes, settings, user, cloud])
+
+  const login = async () => {
+    setLoginErr('')
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), pass)
+    } catch {
+      setLoginErr('Wrong email or password.')
+    }
+  }
+
+  if (!authReady) {
+    return <div className="min-h-screen grid place-items-center text-slate-500 text-sm">Loading…</div>
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen grid place-items-center p-4">
+        <Card className="w-full max-w-sm"><CardContent className="space-y-3 pt-6">
+          <img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-12 w-auto object-contain mx-auto" />
+          <h1 className="text-xl font-semibold text-center">Sign in</h1>
+          <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input type="password" placeholder="Password" value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && login()} />
+          {loginErr && <p className="text-sm text-red-600">{loginErr}</p>}
+          <Button className="w-full" onClick={login}>Sign in</Button>
+        </CardContent></Card>
+      </div>
+    )
+  }
 
   const resetQuote = () => setQ({ ...blankQuote(), ...newQuoteNo(settings) })
 
@@ -119,7 +195,7 @@ export default function App() {
           <div className="flex items-center gap-2 shrink-0">
             <img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-10 w-auto object-contain" />
           </div>
-          <nav className="flex gap-1 text-sm overflow-x-auto">
+          <nav className="flex gap-1 text-sm overflow-x-auto flex-1">
             {TABS.map((tb) => (
               <Button
                 key={tb.id}
@@ -131,6 +207,14 @@ export default function App() {
               </Button>
             ))}
           </nav>
+          <div className="flex items-center gap-2 shrink-0 text-xs text-slate-500">
+            {cloud === 'ready'
+              ? <span className="inline-flex items-center gap-1 text-emerald-600"><Cloud size={13} /> Saved</span>
+              : cloud === 'saving'
+                ? <span className="inline-flex items-center gap-1"><Cloud size={13} /> Saving…</span>
+                : <span className="inline-flex items-center gap-1"><CloudOff size={13} /> Offline</span>}
+            <Button variant="ghost" size="sm" title={user.email || 'Sign out'} onClick={() => signOut(auth)}><LogOut size={14} /></Button>
+          </div>
         </div>
       </header>
 
