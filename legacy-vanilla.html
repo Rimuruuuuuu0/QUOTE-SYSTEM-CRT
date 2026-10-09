@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quotation System</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  fontFamily: { sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'], mono: ['"IBM Plex Mono"', 'monospace'] },
+  colors: { pcb: { DEFAULT: '#0B6E4F', dark: '#08523b', soft: '#E3F2EC' } } } } }
+</script>
+<style>
+  [x-cloak]{display:none!important}
+  body{font-family:'IBM Plex Sans',system-ui,sans-serif}
+  .num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+  .inp{width:100%;border:1px solid rgb(203 213 225);border-radius:.5rem;padding:.5rem .75rem;background:transparent;font-size:.875rem}
+  .inp:focus{outline:2px solid #0B6E4F;outline-offset:1px}
+  @media (prefers-color-scheme:dark){.inp{border-color:rgb(71 85 105)}}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;border-radius:.5rem;padding:.5rem .9rem;font-size:.875rem;font-weight:500;transition:background .15s}
+  .btn-p{background:#0B6E4F;color:#fff}.btn-p:hover{background:#08523b}
+  .btn-g{border:1px solid rgb(203 213 225)}.btn-g:hover{background:rgb(241 245 249)}
+  @media (prefers-color-scheme:dark){.btn-g{border-color:rgb(71 85 105)}.btn-g:hover{background:rgb(30 41 59)}}
+  @media print{
+    body *{visibility:hidden}
+    #print,#print *{visibility:visible}
+    #print{position:absolute;left:0;top:0;width:100%;box-shadow:none!important}
+  }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen" x-data="app()" x-cloak>
+
+<!-- Top bar -->
+<header class="sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
+  <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-6">
+    <div class="font-semibold tracking-tight" x-text="settings.store"></div>
+    <nav class="flex gap-1 text-sm overflow-x-auto">
+      <template x-for="t in tabs" :key="t.id">
+        <button @click="go(t.id)" class="px-3 py-1.5 rounded-md whitespace-nowrap"
+          :class="tab===t.id ? 'bg-pcb text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800'" x-text="t.label"></button>
+      </template>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-6">
+
+<!-- DASHBOARD -->
+<section x-show="tab==='dash'" class="space-y-6">
+  <div class="flex items-end justify-between flex-wrap gap-3">
+    <h1 class="text-2xl font-semibold">Overview</h1>
+    <button class="btn btn-p" @click="newQuote(); go('new')">New quote</button>
+  </div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <template x-for="s in stats()" :key="s.label">
+      <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+        <div class="text-sm text-slate-500" x-text="s.label"></div>
+        <div class="num text-xl mt-1" x-text="s.value"></div>
+      </div>
+    </template>
+  </div>
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+    <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 font-medium">Recent quotes</div>
+    <template x-for="r in quotes.slice(0,5)" :key="r.id">
+      <button @click="preview(r)" class="w-full flex justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
+        <span><span class="num text-sm" x-text="r.no"></span> <span class="ml-2" x-text="r.customer.name || 'No name'"></span></span>
+        <span class="num" x-text="money(totals(r).total)"></span>
+      </button>
+    </template>
+    <p x-show="!quotes.length" class="px-4 py-8 text-center text-slate-500">No quotes yet. Create your first quote to see it here.</p>
+  </div>
+</section>
+
+<!-- QUOTE BUILDER -->
+<section x-show="tab==='new'" class="grid lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 space-y-6">
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-semibold">Customer</h2>
+        <span class="num text-sm text-slate-500" x-text="q.no"></span>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <input class="inp" placeholder="Customer name" x-model="q.customer.name">
+        <input class="inp" placeholder="Phone or email" x-model="q.customer.contact">
+        <input class="inp sm:col-span-2" placeholder="Address" x-model="q.customer.address">
+      </div>
+    </div>
+
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5">
+      <h2 class="font-semibold mb-3">Items</h2>
+      <div class="relative">
+        <input class="inp" placeholder="Search products to add (e.g. RTX, SSD, Ryzen)" x-model="search">
+        <div x-show="search" class="absolute z-10 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
+          <template x-for="p in matches()" :key="p.id">
+            <button @click="addItem(p)" class="w-full flex justify-between px-3 py-2 text-left text-sm hover:bg-pcb-soft dark:hover:bg-slate-800">
+              <span><span x-text="p.name"></span> <span class="text-slate-500" x-text="'· '+p.category"></span></span>
+              <span class="num" x-text="money(p.price)"></span>
+            </button>
+          </template>
+          <button @click="addCustom()" class="w-full px-3 py-2 text-left text-sm text-pcb border-t border-slate-200 dark:border-slate-700">Add "<span x-text="search"></span>" as a custom item</button>
+        </div>
+      </div>
+
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-sm min-w-[520px]">
+          <thead class="text-left text-slate-500"><tr><th class="py-2 font-medium">Item</th><th class="font-medium w-20">Qty</th><th class="font-medium w-32">Unit price</th><th class="font-medium w-32 text-right">Amount</th><th class="w-8"></th></tr></thead>
+          <tbody>
+            <template x-for="(it,i) in q.items" :key="it.key">
+              <tr class="border-t border-slate-100 dark:border-slate-800">
+                <td class="py-2 pr-2"><input class="inp" x-model="it.name"></td>
+                <td class="pr-2"><input type="number" min="1" class="inp num" x-model.number="it.qty"></td>
+                <td class="pr-2"><input type="number" min="0" step="0.01" class="inp num" x-model.number="it.price"></td>
+                <td class="num text-right" x-text="money(it.qty*it.price)"></td>
+                <td><button class="text-slate-400 hover:text-red-600 px-2" @click="q.items.splice(i,1)" aria-label="Remove item">✕</button></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <p x-show="!q.items.length" class="py-8 text-center text-slate-500">No items yet. Search above to add products.</p>
+      </div>
+    </div>
+
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5">
+      <h2 class="font-semibold mb-3">Notes and terms</h2>
+      <textarea class="inp" rows="3" x-model="q.notes" placeholder="Warranty, delivery, payment terms"></textarea>
+    </div>
+  </div>
+
+  <aside class="space-y-4 lg:sticky lg:top-20 self-start">
+    <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+      <h2 class="font-semibold">Summary</h2>
+      <div class="flex justify-between text-sm"><span>Subtotal</span><span class="num" x-text="money(totals(q).sub)"></span></div>
+      <div class="flex gap-2 items-center text-sm">
+        <span class="flex-1">Discount</span>
+        <input type="number" min="0" class="inp num !w-24" x-model.number="q.discount">
+        <select class="inp !w-16" x-model="q.discountType"><option value="%">%</option><option value="₱">₱</option></select>
+      </div>
+      <div class="flex justify-between text-sm"><span x-text="'VAT ('+settings.vat+'%)'"></span><span class="num" x-text="money(totals(q).vat)"></span></div>
+      <div class="flex justify-between pt-3 border-t border-slate-200 dark:border-slate-700 text-lg font-semibold"><span>Total</span><span class="num" x-text="money(totals(q).total)"></span></div>
+      <div class="flex gap-2 pt-2">
+        <button class="btn btn-p flex-1 justify-center" @click="saveQuote(true)">Save and preview</button>
+        <button class="btn btn-g" @click="newQuote()">Clear</button>
+      </div>
+    </div>
+  </aside>
+</section>
+
+<!-- QUOTES LIST -->
+<section x-show="tab==='quotes'" class="space-y-4">
+  <div class="flex flex-wrap gap-3 justify-between items-center">
+    <h1 class="text-2xl font-semibold">Quotes</h1>
+    <div class="flex gap-2">
+      <input class="inp !w-56" placeholder="Search customer or number" x-model="qsearch">
+      <select class="inp !w-36" x-model="filter"><option value="all">All statuses</option><option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option></select>
+    </div>
+  </div>
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-x-auto">
+    <table class="w-full text-sm min-w-[640px]">
+      <thead class="text-left text-slate-500"><tr class="border-b border-slate-200 dark:border-slate-800"><th class="p-3 font-medium">No.</th><th class="font-medium">Customer</th><th class="font-medium">Date</th><th class="font-medium">Status</th><th class="font-medium text-right">Total</th><th class="p-3"></th></tr></thead>
+      <tbody>
+        <template x-for="r in filteredQuotes()" :key="r.id">
+          <tr class="border-b last:border-0 border-slate-100 dark:border-slate-800">
+            <td class="p-3 num" x-text="r.no"></td>
+            <td x-text="r.customer.name || '—'"></td>
+            <td x-text="r.date"></td>
+            <td><select class="inp !w-32 !py-1" x-model="r.status" @change="persist()"><option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option></select></td>
+            <td class="num text-right" x-text="money(totals(r).total)"></td>
+            <td class="p-3 text-right whitespace-nowrap">
+              <button class="btn btn-g !py-1" @click="preview(r)">View</button>
+              <button class="btn btn-g !py-1" @click="edit(r)">Edit</button>
+              <button class="btn btn-g !py-1 text-red-600" @click="removeQuote(r)">Delete</button>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+    <p x-show="!filteredQuotes().length" class="py-10 text-center text-slate-500">No quotes match. Change the filter or create a new quote.</p>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section x-show="tab==='products'" class="space-y-4">
+  <div class="flex flex-wrap gap-3 justify-between items-center">
+    <h1 class="text-2xl font-semibold">Product catalog</h1>
+    <div class="flex gap-2">
+      <input class="inp !w-56" placeholder="Search products" x-model="psearch">
+      <button class="btn btn-p" @click="pf={id:null,name:'',category:'Other',price:0,stock:0}">Add product</button>
+    </div>
+  </div>
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-x-auto">
+    <table class="w-full text-sm min-w-[600px]">
+      <thead class="text-left text-slate-500"><tr class="border-b border-slate-200 dark:border-slate-800"><th class="p-3 font-medium">Product</th><th class="font-medium">Category</th><th class="font-medium text-right">Price</th><th class="font-medium text-right">Stock</th><th class="p-3"></th></tr></thead>
+      <tbody>
+        <template x-for="p in products.filter(x=>(x.name+x.category).toLowerCase().includes(psearch.toLowerCase()))" :key="p.id">
+          <tr class="border-b last:border-0 border-slate-100 dark:border-slate-800">
+            <td class="p-3" x-text="p.name"></td><td x-text="p.category"></td>
+            <td class="num text-right" x-text="money(p.price)"></td>
+            <td class="num text-right" :class="p.stock<=2?'text-amber-600':''" x-text="p.stock"></td>
+            <td class="p-3 text-right whitespace-nowrap">
+              <button class="btn btn-g !py-1" @click="pf={...p}">Edit</button>
+              <button class="btn btn-g !py-1 text-red-600" @click="products=products.filter(x=>x.id!==p.id);persist()">Delete</button>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- SETTINGS -->
+<section x-show="tab==='settings'" class="max-w-xl space-y-4">
+  <h1 class="text-2xl font-semibold">Settings</h1>
+  <div class="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+    <label class="block text-sm">Store name<input class="inp mt-1" x-model="settings.store" @input="persist()"></label>
+    <label class="block text-sm">Address<input class="inp mt-1" x-model="settings.address" @input="persist()"></label>
+    <label class="block text-sm">Phone or email<input class="inp mt-1" x-model="settings.contact" @input="persist()"></label>
+    <div class="grid grid-cols-3 gap-3">
+      <label class="block text-sm">VAT %<input type="number" class="inp mt-1 num" x-model.number="settings.vat" @input="persist()"></label>
+      <label class="block text-sm">Valid for (days)<input type="number" class="inp mt-1 num" x-model.number="settings.validity" @input="persist()"></label>
+      <label class="block text-sm">Number prefix<input class="inp mt-1" x-model="settings.prefix" @input="persist()"></label>
+    </div>
+  </div>
+  <div class="flex gap-2">
+    <button class="btn btn-g" @click="exportData()">Export backup</button>
+    <label class="btn btn-g cursor-pointer">Import backup<input type="file" accept=".json" class="hidden" @change="importData($event)"></label>
+  </div>
+</section>
+</main>
+
+<!-- PRODUCT MODAL -->
+<div x-show="pf" class="fixed inset-0 z-30 bg-black/50 flex items-center justify-center p-4" @keydown.escape.window="pf=null">
+  <div class="bg-white dark:bg-slate-900 rounded-xl p-5 w-full max-w-md space-y-3" @click.outside="pf=null" x-show="pf">
+    <h2 class="font-semibold" x-text="pf && pf.id ? 'Edit product' : 'Add product'"></h2>
+    <template x-if="pf">
+      <div class="space-y-3">
+        <input class="inp" placeholder="Product name" x-model="pf.name">
+        <select class="inp" x-model="pf.category"><template x-for="c in cats"><option x-text="c"></option></template></select>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="text-sm">Price<input type="number" min="0" class="inp num mt-1" x-model.number="pf.price"></label>
+          <label class="text-sm">Stock<input type="number" min="0" class="inp num mt-1" x-model.number="pf.stock"></label>
+        </div>
+      </div>
+    </template>
+    <div class="flex justify-end gap-2 pt-2">
+      <button class="btn btn-g" @click="pf=null">Cancel</button>
+      <button class="btn btn-p" @click="saveProduct()">Save product</button>
+    </div>
+  </div>
+</div>
+
+<!-- PREVIEW / PRINT -->
+<div x-show="view" class="fixed inset-0 z-40 bg-black/60 overflow-auto p-4" @keydown.escape.window="view=null">
+  <div class="max-w-3xl mx-auto">
+    <div class="flex justify-end gap-2 mb-3">
+      <button class="btn btn-p" @click="window.print()">Print or save as PDF</button>
+      <button class="btn btn-g bg-white text-slate-900" @click="view=null">Close</button>
+    </div>
+    <template x-if="view">
+      <div id="print" class="bg-white text-slate-900 rounded-xl shadow-xl p-8 sm:p-10">
+        <div class="flex justify-between border-b-2 border-pcb pb-4">
+          <div><div class="text-xl font-bold" x-text="settings.store"></div>
+            <div class="text-sm text-slate-600" x-text="settings.address"></div>
+            <div class="text-sm text-slate-600" x-text="settings.contact"></div></div>
+          <div class="text-right"><div class="text-2xl font-bold text-pcb">Quotation</div>
+            <div class="num text-sm" x-text="view.no"></div>
+            <div class="text-sm text-slate-600" x-text="'Date: '+view.date"></div>
+            <div class="text-sm text-slate-600" x-text="'Valid until: '+view.valid"></div></div>
+        </div>
+        <div class="py-4 text-sm"><div class="text-slate-500">Prepared for</div>
+          <div class="font-semibold" x-text="view.customer.name"></div>
+          <div x-text="view.customer.contact"></div><div x-text="view.customer.address"></div></div>
+        <table class="w-full text-sm">
+          <thead><tr class="bg-pcb-soft text-left"><th class="p-2">Item</th><th class="text-right">Qty</th><th class="text-right">Unit price</th><th class="text-right p-2">Amount</th></tr></thead>
+          <tbody>
+            <template x-for="it in view.items">
+              <tr class="border-b border-slate-200"><td class="p-2" x-text="it.name"></td><td class="num text-right" x-text="it.qty"></td>
+                <td class="num text-right" x-text="money(it.price)"></td><td class="num text-right p-2" x-text="money(it.qty*it.price)"></td></tr>
+            </template>
+          </tbody>
+        </table>
+        <div class="ml-auto w-64 mt-4 text-sm space-y-1">
+          <div class="flex justify-between"><span>Subtotal</span><span class="num" x-text="money(totals(view).sub)"></span></div>
+          <div class="flex justify-between" x-show="totals(view).disc>0"><span>Discount</span><span class="num" x-text="'-'+money(totals(view).disc)"></span></div>
+          <div class="flex justify-between"><span x-text="'VAT ('+settings.vat+'%)'"></span><span class="num" x-text="money(totals(view).vat)"></span></div>
+          <div class="flex justify-between text-base font-bold border-t border-slate-300 pt-2"><span>Total</span><span class="num" x-text="money(totals(view).total)"></span></div>
+        </div>
+        <div class="mt-6 text-sm text-slate-600 whitespace-pre-line" x-show="view.notes" x-text="view.notes"></div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+function app(){
+  const KEY='quotation-system-v1';
+  const seed=[
+    ['Intel Core i5-12400F','Processor',8200,6],['AMD Ryzen 5 5600','Processor',6900,5],
+    ['MSI B660M Motherboard','Motherboard',6800,4],['Kingston Fury 16GB DDR4','Memory',2400,12],
+    ['Kingston NV2 500GB NVMe SSD','Storage',2100,10],['RTX 4060 8GB','Graphics Card',18500,3],
+    ['650W 80+ Bronze PSU','Power Supply',2800,7],['Mid-Tower ATX Case','Casing',2300,8],
+    ['24" 1080p 75Hz Monitor','Monitor',5400,6],['Keyboard and Mouse Combo','Peripherals',650,20],
+    ['Windows 11 Pro License','Software',9500,10],['PC Assembly and Testing','Service',1000,99],
+    ['Windows 20 Pro License','Software',2000,10],['PC   Assembly and Testing','Service',1000,99]
+  ].map((p,i)=>({id:i+1,name:p[0],category:p[1],price:p[2],stock:p[3]}));
+  const blank=()=>({id:null,no:'',date:'',valid:'',customer:{name:'',contact:'',address:''},items:[],discount:0,discountType:'%',notes:'Prices are subject to change without notice. Warranty per manufacturer terms.',status:'Draft'});
+  const iso=d=>d.toISOString().slice(0,10);
+  return {
+    tab:'dash', tabs:[{id:'dash',label:'Overview'},{id:'new',label:'New quote'},{id:'quotes',label:'Quotes'},{id:'products',label:'Products'},{id:'settings',label:'Settings'}],
+    cats:['Processor','Motherboard','Memory','Storage','Graphics Card','Power Supply','Casing','Monitor','Peripherals','Software','Service','Other'],
+    products:[], quotes:[], settings:{store:'My Computer Store',address:'',contact:'',vat:12,validity:7,prefix:'Q',counter:0},
+    q:blank(), search:'', qsearch:'', psearch:'', filter:'all', pf:null, view:null,
+
+    init(){
+      try{const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(d){this.products=d.products||[];this.quotes=d.quotes||[];Object.assign(this.settings,d.settings||{});}}catch(e){}
+      if(!this.products.length){this.products=seed;this.persist();}
+      this.newQuote();
+    },
+    persist(){try{localStorage.setItem(KEY,JSON.stringify({products:this.products,quotes:this.quotes,settings:this.settings}));}catch(e){}},
+    go(t){this.tab=t;window.scrollTo(0,0)},
+    money(n){return new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(n||0)},
+
+    totals(r){
+      const sub=r.items.reduce((s,i)=>s+(i.qty||0)*(i.price||0),0);
+      const d=r.discountType==='%'?sub*(r.discount||0)/100:(r.discount||0);
+      const disc=Math.min(d,sub), base=sub-disc, vat=base*(this.settings.vat||0)/100;
+      return {sub,disc,vat,total:base+vat};
+    },
+    stats(){
+      const acc=this.quotes.filter(x=>x.status==='Accepted');
+      const sum=l=>l.reduce((s,x)=>s+this.totals(x).total,0);
+      return [{label:'Total quotes',value:this.quotes.length},{label:'Pending (Draft and Sent)',value:this.quotes.filter(x=>['Draft','Sent'].includes(x.status)).length},
+        {label:'Accepted value',value:this.money(sum(acc))},{label:'Products',value:this.products.length}];
+    },
+
+    newQuote(){
+      const n=(this.settings.counter||0)+1, now=new Date(), v=new Date(Date.now()+this.settings.validity*864e5);
+      this.q={...blank(),no:`${this.settings.prefix}-${now.getFullYear()}-${String(n).padStart(4,'0')}`,date:iso(now),valid:iso(v),customer:{name:'',contact:'',address:''},items:[]};
+      this.search='';
+    },
+    matches(){const s=this.search.toLowerCase();return this.products.filter(p=>(p.name+p.category).toLowerCase().includes(s)).slice(0,8)},
+    addItem(p){
+      const ex=this.q.items.find(i=>i.pid===p.id);
+      if(ex)ex.qty++; else this.q.items.push({key:crypto.randomUUID(),pid:p.id,name:p.name,qty:1,price:p.price});
+      this.search='';
+    },
+    addCustom(){this.q.items.push({key:crypto.randomUUID(),pid:null,name:this.search,qty:1,price:0});this.search='';},
+
+    saveQuote(show){
+      if(!this.q.items.length){alert('Add at least one item before saving.');return;}
+      const copy=JSON.parse(JSON.stringify(this.q));
+      const i=this.quotes.findIndex(x=>x.id===copy.id);
+      if(i>=0)this.quotes[i]=copy;
+      else{copy.id=crypto.randomUUID();this.quotes.unshift(copy);this.settings.counter=(this.settings.counter||0)+1;}
+      this.q=copy; this.persist();
+      if(show)this.view=copy;
+    },
+    edit(r){this.q=JSON.parse(JSON.stringify(r));this.go('new')},
+    preview(r){this.view=r},
+    removeQuote(r){if(confirm('Delete '+r.no+'? This cannot be undone.')){this.quotes=this.quotes.filter(x=>x.id!==r.id);this.persist();}},
+    filteredQuotes(){
+      const s=this.qsearch.toLowerCase();
+      return this.quotes.filter(r=>(this.filter==='all'||r.status===this.filter)&&(r.no+r.customer.name).toLowerCase().includes(s));
+    },
+
+    saveProduct(){
+      if(!this.pf.name.trim()){alert('Enter a product name.');return;}
+      if(this.pf.id){const i=this.products.findIndex(x=>x.id===this.pf.id);this.products[i]={...this.pf};}
+      else{this.products.unshift({...this.pf,id:Date.now()});}
+      this.pf=null;this.persist();
+    },
+    exportData(){
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([JSON.stringify({products:this.products,quotes:this.quotes,settings:this.settings},null,2)],{type:'application/json'}));
+      a.download='quotation-backup-'+iso(new Date())+'.json';a.click();
+    },
+    importData(e){
+      const f=e.target.files[0];if(!f)return;
+      f.text().then(t=>{try{const d=JSON.parse(t);this.products=d.products||[];this.quotes=d.quotes||[];Object.assign(this.settings,d.settings||{});this.persist();alert('Backup imported.');}catch(x){alert('That file is not a valid backup.');}});
+    }
+  }
+}
+</script>
+</body>
+</html>

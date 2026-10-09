@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Store System</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<style>
+ [x-cloak]{display:none!important} body{font-family:'IBM Plex Sans',sans-serif}
+ .inp{width:100%;border:1px solid #cbd5e1;border-radius:.5rem;padding:.45rem .7rem;font-size:.875rem;background:transparent}
+ .inp:focus{outline:2px solid #0B6E4F}
+ .btn{border-radius:.5rem;padding:.45rem .9rem;font-size:.875rem;font-weight:500;border:1px solid #cbd5e1}
+ .p{background:#0B6E4F;color:#fff;border-color:#0B6E4F}
+ .card{background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;padding:1rem}
+ th{text-align:left;font-weight:500;color:#64748b;padding:.5rem}td{padding:.5rem;border-top:1px solid #f1f5f9}
+</style>
+<!-- Firebase + app logic. This module is placed BEFORE Alpine on purpose. -->
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getFirestore,collection,doc,onSnapshot,addDoc,setDoc,deleteDoc,updateDoc,writeBatch,increment,serverTimestamp,query,orderBy} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+// 1) PASTE YOUR CONFIG: Firebase Console > Project settings > Your apps > Web app
+const firebaseConfig = {
+  apiKey:"YOUR_API_KEY", authDomain:"YOUR_PROJECT.firebaseapp.com", projectId:"YOUR_PROJECT_ID",
+  storageBucket:"YOUR_PROJECT.appspot.com", messagingSenderId:"...", appId:"..."
+};
+const STORE='My Computer Store', VAT=12;
+const app=initializeApp(firebaseConfig), db=getFirestore(app), auth=getAuth(app);
+const emptyCart=()=>({customer:'',items:[],discount:0,payment:'Cash',quoteId:null});
+const emptyP=()=>({id:null,name:'',category:'Parts',price:0,cost:0,stock:0,reorder:3});
+
+window.app=()=>({
+  user:null, email:'', pass:'', err:'', tab:'sell',
+  tabs:[['sell','New sale / quote'],['quotes','Quotes'],['sales','Sales'],['inventory','Inventory'],['stockin','Stock-in']],
+  products:[], quotes:[], sales:[], stockIns:[],
+  cart:emptyCart(), search:'', pf:emptyP(), si:{pid:'',qty:1,cost:0,supplier:''},
+
+  init(){
+    onAuthStateChanged(auth,u=>{this.user=u; if(u)['products','quotes','sales','stockIns'].forEach(n=>this.watch(n));});
+  },
+  watch(n){ // realtime listener: any change in Firestore updates the screen
+    const q=n==='products'?collection(db,n):query(collection(db,n),orderBy('createdAt','desc'));
+    onSnapshot(q,s=>{this[n]=s.docs.map(d=>({id:d.id,...d.data()})); if(n==='products')this.products.sort((a,b)=>a.name.localeCompare(b.name));});
+  },
+  async login(){this.err='';try{await signInWithEmailAndPassword(auth,this.email,this.pass)}catch(e){this.err='Wrong email or password.'}},
+  logout(){signOut(auth)},
+
+  m(n){return new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(n||0)},
+  d(t){return t&&t.toDate?t.toDate().toLocaleDateString():'...'},
+  tot(c){const sub=c.items.reduce((s,i)=>s+i.qty*i.price,0),disc=sub*(c.discount||0)/100,vat=(sub-disc)*VAT/100;return{sub,disc,vat,total:sub-disc+vat}},
+  match(){const s=this.search.toLowerCase();return this.products.filter(p=>p.name.toLowerCase().includes(s)).slice(0,8)},
+  add(p){const e=this.cart.items.find(i=>i.pid===p.id);e?e.qty++:this.cart.items.push({pid:p.id,name:p.name,qty:1,price:p.price,cost:p.cost||0,svc:p.category==='Service'});this.search=''},
+  clean(items){return JSON.parse(JSON.stringify(items))},
+  num(p){return p+'-'+new Date().toISOString().slice(2,10).replace(/-/g,'')+'-'+Math.floor(1000+Math.random()*9000)},
+
+  // ---------- QUOTES ----------
+  async saveQuote(){
+    if(!this.cart.items.length)return;
+    await addDoc(collection(db,'quotes'),{no:this.num('Q'),customer:this.cart.customer,items:this.clean(this.cart.items),discount:this.cart.discount,total:this.tot(this.cart).total,status:'Draft',createdAt:serverTimestamp()});
+    this.cart=emptyCart();this.tab='quotes';
+  },
+  setStatus(id,status){updateDoc(doc(db,'quotes',id),{status})},
+  toSale(q){this.cart={customer:q.customer,items:this.clean(q.items),discount:q.discount,payment:'Cash',quoteId:q.id};this.tab='sell'},
+
+  // ---------- SALES (atomic: sale record + stock deduction succeed or fail together) ----------
+  async sell(){
+    const c=this.cart; if(!c.items.length)return;
+    for(const i of c.items){ if(i.pid&&!i.svc){const p=this.products.find(x=>x.id===i.pid); if(!p||p.stock<i.qty){alert(`Not enough stock for ${i.name} (${p?p.stock:0} left).`);return;}}}
+    const b=writeBatch(db);
+    b.set(doc(collection(db,'sales')),{no:this.num('S'),customer:c.customer,payment:c.payment,items:this.clean(c.items),discount:c.discount,...this.tot(c),createdAt:serverTimestamp()});
+    c.items.forEach(i=>{if(i.pid&&!i.svc)b.update(doc(db,'products',i.pid),{stock:increment(-i.qty)})});
+    if(c.quoteId)b.update(doc(db,'quotes',c.quoteId),{status:'Accepted'});
+    try{await b.commit();this.cart=emptyCart();this.tab='sales'}catch(e){alert('Sale failed: '+e.message)}
+  },
+  profit(s){return s.items.reduce((t,i)=>t+i.qty*(i.price-(i.cost||0)),0)*(1-(s.discount||0)/100)},
+
+  // ---------- INVENTORY ----------
+  async saveProduct(){
+    const {id,...p}=this.pf; if(!p.name.trim())return;
+    id?await updateDoc(doc(db,'products',id),p):await addDoc(collection(db,'products'),{...p,createdAt:serverTimestamp()});
+    this.pf=emptyP();
+  },
+  async delProduct(p){if(confirm('Delete '+p.name+'?'))await deleteDoc(doc(db,'products',p.id))},
+
+  // ---------- STOCK-IN (atomic: history record + stock increase + latest cost) ----------
+  async stockIn(){
+    const p=this.products.find(x=>x.id===this.si.pid); if(!p||this.si.qty<1)return;
+    const b=writeBatch(db);
+    b.set(doc(collection(db,'stockIns')),{pid:p.id,name:p.name,qty:this.si.qty,cost:this.si.cost,supplier:this.si.supplier,createdAt:serverTimestamp()});
+    b.update(doc(db,'products',p.id),{stock:increment(this.si.qty),cost:this.si.cost});
+    await b.commit(); this.si={pid:'',qty:1,cost:0,supplier:''};
+  },
+
+  print(r,title){
+    const w=window.open('','_blank');
+    w.document.write(`<body style="font-family:sans-serif;max-width:700px;margin:auto"><h2>${STORE}</h2><h3>${title} ${r.no}</h3><p>Customer: ${r.customer||'-'}<br>Date: ${this.d(r.createdAt)}</p><table width="100%" border="1" cellspacing="0" cellpadding="6">${r.items.map(i=>`<tr><td>${i.name}</td><td>${i.qty}</td><td>${this.m(i.price)}</td><td>${this.m(i.qty*i.price)}</td></tr>`).join('')}</table><p>VAT ${VAT}% included in total</p><h3>Total: ${this.m(r.total)}</h3></body>`);
+    w.document.close();w.print();
+  }
+});
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-900" x-data="app()" x-cloak>
+
+<!-- LOGIN -->
+<div x-show="!user" class="min-h-screen grid place-items-center p-4">
+  <div class="card w-full max-w-sm space-y-3">
+    <h1 class="text-xl font-semibold">Sign in</h1>
+    <input class="inp" type="email" placeholder="Email" x-model="email">
+    <input class="inp" type="password" placeholder="Password" x-model="pass" @keydown.enter="login()">
+    <p class="text-sm text-red-600" x-text="err"></p>
+    <button class="btn p w-full" @click="login()">Sign in</button>
+  </div>
+</div>
+
+<div x-show="user">
+<header class="bg-white border-b sticky top-0 z-10">
+  <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-4">
+    <b>My Computer Store</b>
+    <nav class="flex gap-1 text-sm overflow-x-auto flex-1">
+      <template x-for="t in tabs"><button class="px-3 py-1.5 rounded-md whitespace-nowrap" :class="tab===t[0]?'bg-[#0B6E4F] text-white':'hover:bg-slate-100'" @click="tab=t[0]" x-text="t[1]"></button></template>
+    </nav>
+    <button class="btn" @click="logout()">Sign out</button>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-6">
+
+<!-- SELL / QUOTE -->
+<section x-show="tab==='sell'" class="grid lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-2 card space-y-3">
+    <input class="inp" placeholder="Customer name" x-model="cart.customer">
+    <div class="relative">
+      <input class="inp" placeholder="Search products to add" x-model="search">
+      <div x-show="search" class="absolute z-10 w-full bg-white border rounded-lg shadow mt-1">
+        <template x-for="p in match()"><button class="w-full flex justify-between px-3 py-2 text-sm hover:bg-slate-50" @click="add(p)"><span x-text="p.name"></span><span x-text="m(p.price)+' · stock '+p.stock"></span></button></template>
+      </div>
+    </div>
+    <table class="w-full text-sm"><thead><tr><th>Item</th><th class="w-20">Qty</th><th class="w-32">Price</th><th></th></tr></thead>
+      <tbody><template x-for="(i,n) in cart.items"><tr>
+        <td x-text="i.name"></td>
+        <td><input type="number" min="1" class="inp" x-model.number="i.qty"></td>
+        <td><input type="number" min="0" class="inp" x-model.number="i.price"></td>
+        <td><button @click="cart.items.splice(n,1)">✕</button></td></tr></template></tbody></table>
+    <p x-show="!cart.items.length" class="text-center text-slate-500 py-6">Search above to add items.</p>
+  </div>
+  <div class="card space-y-3 self-start">
+    <div class="flex justify-between text-sm"><span>Subtotal</span><span x-text="m(tot(cart).sub)"></span></div>
+    <label class="flex justify-between items-center text-sm">Discount %<input type="number" min="0" class="inp !w-24" x-model.number="cart.discount"></label>
+    <div class="flex justify-between text-sm"><span>VAT 12%</span><span x-text="m(tot(cart).vat)"></span></div>
+    <div class="flex justify-between font-semibold text-lg border-t pt-2"><span>Total</span><span x-text="m(tot(cart).total)"></span></div>
+    <select class="inp" x-model="cart.payment"><option>Cash</option><option>GCash</option><option>Card</option><option>Bank transfer</option></select>
+    <button class="btn p w-full" @click="sell()">Complete sale</button>
+    <button class="btn w-full" @click="saveQuote()">Save as quote</button>
+  </div>
+</section>
+
+<!-- QUOTES -->
+<section x-show="tab==='quotes'" class="card overflow-x-auto"><table class="w-full text-sm">
+  <thead><tr><th>No.</th><th>Customer</th><th>Date</th><th>Status</th><th>Total</th><th></th></tr></thead>
+  <tbody><template x-for="q in quotes" :key="q.id"><tr>
+    <td x-text="q.no"></td><td x-text="q.customer"></td><td x-text="d(q.createdAt)"></td>
+    <td><select class="inp !w-28" :value="q.status" @change="setStatus(q.id,$event.target.value)"><option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option></select></td>
+    <td x-text="m(q.total)"></td>
+    <td class="whitespace-nowrap"><button class="btn" @click="print(q,'Quotation')">Print</button> <button class="btn" @click="toSale(q)">Convert to sale</button></td></tr></template></tbody></table></section>
+
+<!-- SALES -->
+<section x-show="tab==='sales'" class="space-y-4">
+  <div class="grid grid-cols-3 gap-3">
+    <div class="card"><div class="text-sm text-slate-500">Total sales</div><b x-text="m(sales.reduce((t,s)=>t+s.total,0))"></b></div>
+    <div class="card"><div class="text-sm text-slate-500">Gross profit</div><b x-text="m(sales.reduce((t,s)=>t+profit(s),0))"></b></div>
+    <div class="card"><div class="text-sm text-slate-500">Low stock items</div><b x-text="products.filter(p=>p.category!=='Service'&&p.stock<=p.reorder).length"></b></div>
+  </div>
+  <div class="card overflow-x-auto"><table class="w-full text-sm"><thead><tr><th>No.</th><th>Customer</th><th>Date</th><th>Payment</th><th>Total</th><th></th></tr></thead>
+    <tbody><template x-for="s in sales" :key="s.id"><tr><td x-text="s.no"></td><td x-text="s.customer"></td><td x-text="d(s.createdAt)"></td><td x-text="s.payment"></td><td x-text="m(s.total)"></td><td><button class="btn" @click="print(s,'Receipt')">Print</button></td></tr></template></tbody></table></div>
+</section>
+
+<!-- INVENTORY -->
+<section x-show="tab==='inventory'" class="space-y-4">
+  <div class="card grid sm:grid-cols-6 gap-2 items-end">
+    <label class="sm:col-span-2 text-sm">Name<input class="inp" x-model="pf.name"></label>
+    <label class="text-sm">Category<select class="inp" x-model="pf.category"><option>Parts</option><option>Laptop</option><option>Peripherals</option><option>Accessories</option><option>Software</option><option>Service</option></select></label>
+    <label class="text-sm">Sell price<input type="number" class="inp" x-model.number="pf.price"></label>
+    <label class="text-sm">Cost<input type="number" class="inp" x-model.number="pf.cost"></label>
+    <label class="text-sm" x-show="!pf.id">Opening stock<input type="number" class="inp" x-model.number="pf.stock"></label>
+    <label class="text-sm">Reorder at<input type="number" class="inp" x-model.number="pf.reorder"></label>
+    <button class="btn p" @click="saveProduct()" x-text="pf.id?'Update product':'Add product'"></button>
+  </div>
+  <div class="card overflow-x-auto"><table class="w-full text-sm"><thead><tr><th>Product</th><th>Category</th><th>Cost</th><th>Price</th><th>Stock</th><th></th></tr></thead>
+    <tbody><template x-for="p in products" :key="p.id"><tr>
+      <td x-text="p.name"></td><td x-text="p.category"></td><td x-text="m(p.cost)"></td><td x-text="m(p.price)"></td>
+      <td :class="p.category!=='Service'&&p.stock<=p.reorder?'text-amber-600 font-semibold':''" x-text="p.stock"></td>
+      <td class="whitespace-nowrap"><button class="btn" @click="pf={...p}">Edit</button> <button class="btn text-red-600" @click="delProduct(p)">Delete</button></td></tr></template></tbody></table></div>
+</section>
+
+<!-- STOCK-IN -->
+<section x-show="tab==='stockin'" class="space-y-4">
+  <div class="card grid sm:grid-cols-5 gap-2 items-end">
+    <label class="sm:col-span-2 text-sm">Product<select class="inp" x-model="si.pid"><option value="">Select product</option><template x-for="p in products"><option :value="p.id" x-text="p.name"></option></template></select></label>
+    <label class="text-sm">Quantity<input type="number" min="1" class="inp" x-model.number="si.qty"></label>
+    <label class="text-sm">Unit cost<input type="number" min="0" class="inp" x-model.number="si.cost"></label>
+    <label class="text-sm">Supplier<input class="inp" x-model="si.supplier"></label>
+    <button class="btn p sm:col-span-5" @click="stockIn()">Record stock-in</button>
+  </div>
+  <div class="card overflow-x-auto"><table class="w-full text-sm"><thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Unit cost</th><th>Supplier</th></tr></thead>
+    <tbody><template x-for="s in stockIns" :key="s.id"><tr><td x-text="d(s.createdAt)"></td><td x-text="s.name"></td><td x-text="s.qty"></td><td x-text="m(s.cost)"></td><td x-text="s.supplier"></td></tr></template></tbody></table></div>
+</section>
+</main>
+</div>
+</body>
+</html>

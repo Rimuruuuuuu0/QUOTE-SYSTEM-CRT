@@ -1,16 +1,30 @@
-# Quotation System
+# QUOTE-SYSTEM-CRT — React + Tailwind + shadcn/ui
 
-Simple static quotation app (Alpine.js + Tailwind CDN).
+Quotation system rebuilt with Vite + React 18 + Tailwind CSS + shadcn-style UI.
 
-- `index.html` — main app (localStorage version, production entry point)
-- `quotation-firebase.html` — Firebase/Firestore variant (needs config)
+## Stack
+- Vite 5 + React 18 + TypeScript
+- Tailwind CSS 3.4 + tailwindcss-animate
+- shadcn/ui components in `src/components/ui` (Button, Card, Input, Dialog, Badge)
+- lucide-react icons, Radix Dialog
+- localStorage persistence (`quotation-system-v1` key, same as before)
 
-## Run locally
-Just open `index.html` in a browser. No build step.
+## Dev
+```bash
+npm install
+npm run dev
+```
+
+## Build
+```bash
+npm run build
+```
+Output: `dist/`
 
 ## Deploy (Netlify)
-Publish directory: `.` (root). No build command.
+- Build command: `npm run build`
+- Publish directory: `dist`
 
-## Firebase variant
-Edit `quotation-firebase.html` and replace `firebaseConfig` with your own
-Firebase project values before deploying.
+## Legacy files
+- `legacy-vanilla.html` — original Alpine.js app
+- `legacy-firebase.html` / `quotation-firebase.html` — Firebase variant (needs `firebaseConfig`)
