@@ -21,7 +21,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'settings', label: 'Settings', icon: <SettingsIcon size={15} /> },
 ]
 
-const CATS = ['CPU','Motherboard','RAM','Storage','GPU','PSU','Casing','Cooling','Monitor','Peripherals','Accessories','Laptop','Software','Service','Other']
+import { CATS } from '@/lib/categories'
 
 export default function App() {
   const { products, setProducts, quotes, setQuotes, settings, setSettings } = useStore()

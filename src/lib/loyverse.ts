@@ -1,4 +1,5 @@
 import type { Product } from './types'
+import { normalizeCategory } from './categories'
 import { uid } from './utils'
 
 function splitRow(line: string): string[] {
@@ -66,7 +67,7 @@ export function importLoyverseCsv(text: string, existing: Product[]): LoyverseRe
     const name = (cells[iName] || '').trim()
     if (!name) { skipped++; continue }
     if (iComp >= 0 && (cells[iComp] || '').trim()) { skipped++; continue } // composite component row
-    const category = (iCat >= 0 ? cells[iCat] || '' : '').trim() || 'Other'
+    const category = normalizeCategory(name, (iCat >= 0 ? cells[iCat] || '' : '').trim() || 'Other')
     const price = iPrice >= 0 ? num(cells[iPrice]) : 0
     const cost = iCost >= 0 ? num(cells[iCost]) : 0
     const stock = iStock >= 0 ? Math.round(num(cells[iStock])) : 0

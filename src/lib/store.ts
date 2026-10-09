@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Product, Quote, Settings } from './types'
+import { normalizeCategory } from './categories'
 import { iso } from './utils'
 
 const KEY = 'quotation-system-v1'
@@ -59,7 +60,7 @@ function load() {
       }
       const products = ((d.products?.length ? d.products : seed) as Product[]).map((p) => ({
         ...p,
-        category: CAT_FIX[p.category] || p.category,
+        category: normalizeCategory(p.name, CAT_FIX[p.category] || p.category),
       }))
       return {
         products,
