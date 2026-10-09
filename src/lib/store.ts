@@ -5,18 +5,18 @@ import { iso } from './utils'
 const KEY = 'quotation-system-v1'
 
 const seed: Product[] = [
-  ['Intel Core i5-12400F', 'Processor', 8200, 6],
-  ['AMD Ryzen 5 5600', 'Processor', 6900, 5],
-  ['MSI B660M Motherboard', 'Motherboard', 6800, 4],
-  ['Kingston Fury 16GB DDR4', 'Memory', 2400, 12],
-  ['Kingston NV2 500GB NVMe SSD', 'Storage', 2100, 10],
-  ['RTX 4060 8GB', 'Graphics Card', 18500, 3],
-  ['650W 80+ Bronze PSU', 'Power Supply', 2800, 7],
-  ['Mid-Tower ATX Case', 'Casing', 2300, 8],
-  ['24" 1080p 75Hz Monitor', 'Monitor', 5400, 6],
-  ['Keyboard and Mouse Combo', 'Peripherals', 650, 20],
-  ['Windows 11 Pro License', 'Software', 9500, 10],
-  ['PC Assembly and Testing', 'Service', 1000, 99],
+  ['Intel Core i5-12400F', 'CPU', 0, 6],
+  ['AMD Ryzen 5 5600', 'CPU', 0, 5],
+  ['MSI B660M Motherboard', 'Motherboard', 0, 4],
+  ['Kingston Fury 16GB DDR4', 'RAM', 0, 12],
+  ['Kingston NV2 500GB NVMe SSD', 'Storage', 0, 10],
+  ['RTX 4060 8GB', 'GPU', 0, 3],
+  ['650W 80+ Bronze PSU', 'PSU', 0, 7],
+  ['Mid-Tower ATX Case', 'Casing', 0, 8],
+  ['24" 1080p 75Hz Monitor', 'Monitor', 0, 6],
+  ['Keyboard and Mouse Combo', 'Peripherals', 0, 20],
+  ['Windows 11 Pro License', 'Software', 0, 10],
+  ['PC Assembly and Testing', 'Service', 0, 99],
 ].map((p, i) => ({ id: i + 1, name: p[0] as string, category: p[1] as string, price: p[2] as number, stock: p[3] as number }))
 
 export const blankQuote = (): Quote => ({
@@ -42,6 +42,13 @@ const defaultSettings: Settings = {
   counter: 0,
 }
 
+const CAT_FIX: Record<string, string> = {
+  'Processor': 'CPU',
+  'Memory': 'RAM',
+  'Graphics Card': 'GPU',
+  'Power Supply': 'PSU',
+}
+
 function load() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY) || 'null')
@@ -50,8 +57,12 @@ function load() {
       if (['My Computer Store', 'My PC Store', 'My pc store'].includes(settings.store)) {
         settings.store = 'ChrisRandomTech'
       }
+      const products = ((d.products?.length ? d.products : seed) as Product[]).map((p) => ({
+        ...p,
+        category: CAT_FIX[p.category] || p.category,
+      }))
       return {
-        products: (d.products?.length ? d.products : seed) as Product[],
+        products,
         quotes: (d.quotes || []) as Quote[],
         settings,
       }

@@ -21,7 +21,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'settings', label: 'Settings', icon: <SettingsIcon size={15} /> },
 ]
 
-const CATS = ['Processor','Motherboard','Memory','Storage','Graphics Card','Power Supply','Casing','Monitor','Peripherals','Software','Service','Other']
+const CATS = ['CPU','Motherboard','RAM','Storage','GPU','PSU','Casing','Cooling','Monitor','Peripherals','Accessories','Laptop','Software','Service','Other']
 
 export default function App() {
   const { products, setProducts, quotes, setQuotes, settings, setSettings } = useStore()
@@ -308,6 +308,7 @@ export default function App() {
               <div className="flex gap-2 flex-wrap">
                 <Input className="!w-56" placeholder="Search products" value={psearch} onChange={(e) => setPsearch(e.target.value)} />
                 <Button variant="outline" onClick={() => document.getElementById('loyverse-csv')?.click()}><Upload size={13} /> Import Loyverse</Button>
+                <Button variant="outline" title="Set all product prices to 0" onClick={() => { if (confirm('Remove ALL prices? Every product price becomes 0.')) setProducts((prev) => prev.map((p) => ({ ...p, price: 0 }))) }}>Clear prices</Button>
                 <input id="loyverse-csv" type="file" accept=".csv" className="hidden" onChange={(e) => {
                   const f = e.target.files?.[0]; if (!f) return
                   f.text().then((txt) => {
@@ -328,7 +329,7 @@ export default function App() {
                   <tbody>
                     {products.filter((x) => (x.name + x.category).toLowerCase().includes(psearch.toLowerCase())).map((p) => (
                       <tr key={p.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
-                        <td className="p-3">{p.name}</td><td>{p.category}</td>
+                        <td className="p-3">{p.name}</td><td><Badge className="uppercase tracking-wide">{p.category}</Badge></td>
                         <td className="num text-right">{money(p.price)}</td>
                         <td className={cn('num text-right', p.stock <= 2 && 'text-amber-600')}>{p.stock}</td>
                         <td className="p-3 text-right whitespace-nowrap space-x-1">
