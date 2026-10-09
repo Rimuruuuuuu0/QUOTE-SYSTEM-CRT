@@ -109,7 +109,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <img src="/logo.png" alt="ChrisRandomTech" className="h-9 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-            <div className="font-semibold tracking-tight hidden sm:block">{settings.store}</div>
+            <div className="font-semibold tracking-tight">ChrisRandomTech</div>
           </div>
           <nav className="flex gap-1 text-sm overflow-x-auto">
             {TABS.map((tb) => (

@@ -46,10 +46,14 @@ function load() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY) || 'null')
     if (d) {
+      const settings = { ...defaultSettings, ...(d.settings || {}) } as Settings
+      if (['My Computer Store', 'My PC Store', 'My pc store'].includes(settings.store)) {
+        settings.store = 'ChrisRandomTech'
+      }
       return {
         products: (d.products?.length ? d.products : seed) as Product[],
         quotes: (d.quotes || []) as Quote[],
-        settings: { ...defaultSettings, ...(d.settings || {}) } as Settings,
+        settings,
       }
     }
   } catch {}
