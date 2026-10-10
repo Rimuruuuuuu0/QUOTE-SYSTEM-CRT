@@ -295,15 +295,9 @@ tailwind.config = { theme: { extend: {
 <script>
 function app(){
   const KEY='quotation-system-v1';
-  const seed=[
-    ['Intel Core i5-12400F','Processor',8200,6],['AMD Ryzen 5 5600','Processor',6900,5],
-    ['MSI B660M Motherboard','Motherboard',6800,4],['Kingston Fury 16GB DDR4','Memory',2400,12],
-    ['Kingston NV2 500GB NVMe SSD','Storage',2100,10],['RTX 4060 8GB','Graphics Card',18500,3],
-    ['650W 80+ Bronze PSU','Power Supply',2800,7],['Mid-Tower ATX Case','Casing',2300,8],
-    ['24" 1080p 75Hz Monitor','Monitor',5400,6],['Keyboard and Mouse Combo','Peripherals',650,20],
-    ['Windows 11 Pro License','Software',9500,10],['PC Assembly and Testing','Service',1000,99],
-    ['Windows 20 Pro License','Software',2000,10],['PC   Assembly and Testing','Service',1000,99]
-  ].map((p,i)=>({id:i+1,name:p[0],category:p[1],price:p[2],stock:p[3]}));
+  const seed: Product[] = [];
+
+  const hasSeed = seed.length > 0
   const blank=()=>({id:null,no:'',date:'',valid:'',customer:{name:'',contact:'',address:''},items:[],discount:0,discountType:'%',notes:'Prices are subject to change without notice. Warranty per manufacturer terms.',status:'Draft'});
   const iso=d=>d.toISOString().slice(0,10);
   return {
@@ -314,7 +308,7 @@ function app(){
 
     init(){
       try{const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(d){this.products=d.products||[];this.quotes=d.quotes||[];Object.assign(this.settings,d.settings||{});}}catch(e){}
-      if(!this.products.length){this.products=seed;this.persist();}
+      if(hasSeed && !this.products.length){this.products=seed;this.persist();}
       this.newQuote();
     },
     persist(){try{localStorage.setItem(KEY,JSON.stringify({products:this.products,quotes:this.quotes,settings:this.settings}));}catch(e){}},

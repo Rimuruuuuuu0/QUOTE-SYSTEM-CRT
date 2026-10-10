@@ -5,20 +5,7 @@ import { iso } from './utils'
 
 const KEY = 'quotation-system-v1'
 
-const seed: Product[] = [
-  ['Intel Core i5-12400F', 'CPU', 0, 6],
-  ['AMD Ryzen 5 5600', 'CPU', 0, 5],
-  ['MSI B660M Motherboard', 'Motherboard', 0, 4],
-  ['Kingston Fury 16GB DDR4', 'RAM', 0, 12],
-  ['Kingston NV2 500GB NVMe SSD', 'Storage', 0, 10],
-  ['RTX 4060 8GB', 'GPU', 0, 3],
-  ['650W 80+ Bronze PSU', 'PSU', 0, 7],
-  ['Mid-Tower ATX Case', 'Casing', 0, 8],
-  ['24" 1080p 75Hz Monitor', 'Monitor', 0, 6],
-  ['Keyboard and Mouse Combo', 'Peripherals', 0, 20],
-  ['Windows 11 Pro License', 'Software', 0, 10],
-  ['PC Assembly and Testing', 'Service', 0, 99],
-].map((p, i) => ({ id: i + 1, name: p[0] as string, category: p[1] as string, price: p[2] as number, stock: p[3] as number }))
+const seed: Product[] = []
 
 export const blankQuote = (): Quote => ({
   id: null,
