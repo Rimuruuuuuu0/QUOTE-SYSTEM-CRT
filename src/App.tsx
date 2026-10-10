@@ -117,7 +117,7 @@ export default function App() {
   const matches = useMemo(() => {
     const s = search.toLowerCase()
     if (!s) return []
-    return products.filter((p) => ((p.name || '') + (p.category || '')).toLowerCase().includes(s)).slice(0, 8)
+    return products.filter((p) => ((p.name || '') + ' ' + (p.variant || '') + (p.category || '')).toLowerCase().includes(s)).slice(0, 8)
   }, [search, products])
 
   if (!authReady) {
@@ -147,7 +147,7 @@ export default function App() {
       if (ex) return { ...prev, items: prev.items.map((i) => (i.pid === p.id ? { ...i, qty: i.qty + 1 } : i)) }
       const cost = p.cost || 0
       const margin = settings.markup || 20
-      return { ...prev, items: [...prev.items, { key: uid(), pid: p.id, name: p.name, qty: 1, cost, margin, price: cost ? srp(cost, margin) : p.price }] }
+      return { ...prev, items: [...prev.items, { key: uid(), pid: p.id, name: p.name, variant: p.variant || '', qty: 1, cost, margin, price: cost ? srp(cost, margin) : p.price }] }
     })
     setSearch('')
   }
@@ -174,7 +174,7 @@ export default function App() {
   const filteredQuotes = quotes.filter((r) => {
     const s = qsearch.toLowerCase()
     const items = Array.isArray(r.items) ? r.items : []
-    const hay = ((r.no || '') + ' ' + (r.customer?.name || '') + ' ' + items.map((i) => i.name || '').join(' ')).toLowerCase()
+    const hay = ((r.no || '') + ' ' + (r.customer?.name || '') + ' ' + items.map((i) => (i.name || '') + ' ' + (i.variant || '')).join(' ')).toLowerCase()
     return (filter === 'all' || r.status === filter) && hay.includes(s)
   })
 
@@ -291,23 +291,24 @@ export default function App() {
                     <div className="absolute z-10 mt-1 w-full max-h-64 overflow-auto rounded-lg border bg-white dark:bg-slate-900 shadow-lg">
                       {matches.map((p) => (
                         <button key={p.id} onClick={() => addItem(p)} className="w-full flex justify-between px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800">
-                          <span>{p.name} <span className="text-slate-500">· {p.category}</span></span>
+                          <span>{p.name}{p.variant ? <span className="ml-1 text-brand-blue">[{p.variant}]</span> : null} <span className="text-slate-500">· {p.category}</span></span>
                           <span className="num">{money(p.price)}</span>
                         </button>
                       ))}
-                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, qty: 1, cost: 0, margin: settings.markup || 20, price: 0 }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-brand-blue border-t">
+                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, variant: '', qty: 1, cost: 0, margin: settings.markup || 20, price: 0 }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-brand-blue border-t">
                         Add "{search}" as custom item
                       </button>
                     </div>
                   )}
                 </div>
                 <div className="mt-4 overflow-x-auto">
-                  <table className="w-full text-sm min-w-[680px]">
-                    <thead className="text-left text-slate-500"><tr><th className="py-2 font-medium">Item</th><th className="font-medium w-16">Qty</th><th className="font-medium w-28">Cost (supplier)</th><th className="font-medium w-20">+ %</th><th className="font-medium w-28">SRP</th><th className="font-medium w-28 text-right">Amount</th><th className="w-8" /></tr></thead>
+                  <table className="w-full text-sm min-w-[760px]">
+                    <thead className="text-left text-slate-500"><tr><th className="py-2 font-medium">Item</th><th className="font-medium w-32">Variant</th><th className="font-medium w-16">Qty</th><th className="font-medium w-28">Cost (supplier)</th><th className="font-medium w-20">+ %</th><th className="font-medium w-28">SRP</th><th className="font-medium w-28 text-right">Amount</th><th className="w-8" /></tr></thead>
                     <tbody>
                       {q.items.map((it, i) => (
                         <tr key={it.key} className="border-t border-slate-100 dark:border-slate-800">
                           <td className="py-2 pr-2"><Input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} /></td>
+                          <td className="pr-2"><Input placeholder="e.g. 8GB" value={it.variant || ''} onChange={(e) => setItem(i, { variant: e.target.value })} /></td>
                           <td className="pr-2"><Input type="number" min={1} className="num" value={it.qty} onChange={(e) => setItem(i, { qty: Number(e.target.value) })} /></td>
                           <td className="pr-2"><Input type="number" min={0} className="num" value={it.cost || 0} onChange={(e) => setCostMargin(i, Number(e.target.value), it.margin ?? settings.markup ?? 20)} /></td>
                           <td className="pr-2"><Input type="number" min={0} className="num" value={it.margin ?? settings.markup ?? 20} onChange={(e) => setCostMargin(i, it.cost || 0, Number(e.target.value))} /></td>
@@ -443,7 +444,7 @@ export default function App() {
                     } catch (x: unknown) { alert(x instanceof Error ? x.message : 'Could not read that CSV.') }
                   }); e.target.value = ''
                 }} />
-                <Button onClick={() => setPf({ name: '', category: 'Other', price: 0, stock: 0 })}>Add product</Button>
+                <Button onClick={() => setPf({ name: '', variant: '', category: 'Other', price: 0, stock: 0 })}>Add product</Button>
               </div>
             </div>
             <Card>
@@ -468,12 +469,12 @@ export default function App() {
             </Card>
             <Card>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[600px]">
-                  <thead className="text-left text-slate-500"><tr className="border-b"><th className="p-3 font-medium">Product</th><th>Category</th><th className="text-right">Cost</th><th className="text-right">SRP</th><th className="text-right">Stock</th><th className="p-3" /></tr></thead>
+                <table className="w-full text-sm min-w-[680px]">
+                  <thead className="text-left text-slate-500"><tr className="border-b"><th className="p-3 font-medium">Product</th><th>Variant</th><th>Category</th><th className="text-right">Cost</th><th className="text-right">SRP</th><th className="text-right">Stock</th><th className="p-3" /></tr></thead>
                   <tbody>
-                    {products.filter((x) => (catFilter === 'All' || x.category === catFilter) && (x.name + x.category).toLowerCase().includes(psearch.toLowerCase())).map((p) => (
+                    {products.filter((x) => (catFilter === 'All' || x.category === catFilter) && (x.name + ' ' + (x.variant || '') + x.category).toLowerCase().includes(psearch.toLowerCase())).map((p) => (
                       <tr key={p.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
-                        <td className="p-3">{p.name}</td><td><Badge className="uppercase tracking-wide">{p.category}</Badge></td>
+                        <td className="p-3">{p.name}</td><td className="text-brand-blue">{p.variant || '—'}</td><td><Badge className="uppercase tracking-wide">{p.category}</Badge></td>
                         <td className="num text-right text-slate-500">{p.cost ? money(p.cost) : '—'}</td>
                         <td className="num text-right">{money(p.price)}</td>
                         <td className={cn('num text-right', p.stock <= 2 && 'text-amber-600')}>{p.stock}</td>
@@ -485,7 +486,7 @@ export default function App() {
                     ))}
                   </tbody>
                 </table>
-                {!products.filter((x) => (catFilter === 'All' || x.category === catFilter) && (x.name + x.category).toLowerCase().includes(psearch.toLowerCase())).length && (
+                {!products.filter((x) => (catFilter === 'All' || x.category === catFilter) && (x.name + ' ' + (x.variant || '') + x.category).toLowerCase().includes(psearch.toLowerCase())).length && (
                   <p className="py-10 text-center text-slate-500">No products in {catFilter}. Try another category or search.</p>
                 )}
               </div>
@@ -520,6 +521,7 @@ export default function App() {
           {pf && (
             <div className="space-y-3">
               <Input placeholder="Product name" value={pf.name} onChange={(e) => setPf({ ...pf, name: e.target.value })} />
+              <Input placeholder="Variant (e.g. 8GB, White, 3200MHz)" value={(pf as Product).variant || ''} onChange={(e) => setPf({ ...pf, variant: e.target.value })} />
               <Select value={pf.category} onChange={(e) => setPf({ ...pf, category: e.target.value })}>
                 {CATS.map((c) => <option key={c}>{c}</option>)}
               </Select>
@@ -553,8 +555,8 @@ export default function App() {
               </div>
               <div className="py-4 text-sm"><div className="text-slate-500">Prepared for</div><div className="font-semibold">{view.customer?.name}</div><div>{view.customer?.contact}</div><div>{view.customer?.address}</div><Badge>{view.status}</Badge></div>
               <table className="w-full text-sm">
-                <thead><tr className="bg-brand-bluesoft text-left"><th className="p-2">Item</th><th className="text-right">Qty</th><th className="text-right">Unit price</th><th className="text-right p-2">Amount</th></tr></thead>
-                <tbody>{(view.items || []).map((it) => (<tr key={it.key} className="border-b"><td className="p-2">{it.name}</td><td className="num text-right">{it.qty}</td><td className="num text-right">{money(it.price)}</td><td className="num text-right p-2">{money(it.qty * it.price)}</td></tr>))}</tbody>
+                <thead><tr className="bg-brand-bluesoft text-left"><th className="p-2">Item</th><th>Variant</th><th className="text-right">Qty</th><th className="text-right">Unit price</th><th className="text-right p-2">Amount</th></tr></thead>
+                <tbody>{(view.items || []).map((it) => (<tr key={it.key} className="border-b"><td className="p-2">{it.name}</td><td className="p-2 text-slate-600">{it.variant || '—'}</td><td className="num text-right">{it.qty}</td><td className="num text-right">{money(it.price)}</td><td className="num text-right p-2">{money(it.qty * it.price)}</td></tr>))}</tbody>
               </table>
               <div className="ml-auto w-64 mt-4 text-sm space-y-1">
                 <div className="flex justify-between"><span>Subtotal</span><span className="num">{money(totals(view).sub)}</span></div>

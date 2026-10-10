@@ -15,6 +15,8 @@ export type Category =
 export interface Product {
   id: number | string
   name: string
+  /** Variant e.g. 8GB / White / 3200MHz. Kept separate from name. */
+  variant?: string
   category: string
   price: number
   stock: number
@@ -25,6 +27,8 @@ export interface QuoteItem {
   key: string
   pid: number | string | null
   name: string
+  /** Variant copied from product at add-time; editable per line. */
+  variant?: string
   qty: number
   /** Supplier base price (cost). */
   cost: number

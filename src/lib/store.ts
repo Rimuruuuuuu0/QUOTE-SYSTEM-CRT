@@ -37,6 +37,12 @@ const CAT_FIX: Record<string, string> = {
   'Power Supply': 'PSU',
 }
 
+function splitVariantName(n: string): { name: string; variant: string } {
+  const m = (n || '').match(/^(.*)\s+\(([^()]+)\)\s*$/)
+  if (m) return { name: m[1].trim(), variant: m[2].trim() }
+  return { name: n || '', variant: '' }
+}
+
 function load() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY) || 'null')
@@ -45,12 +51,24 @@ function load() {
       if (['My Computer Store', 'My PC Store', 'My pc store'].includes(settings.store)) {
         settings.store = 'ChrisRandomTech'
       }
-      const products = ((Array.isArray(d.products) && d.products.length ? d.products : seed) as Product[])
+      const products = ((Array.isArray(d.products) ? d.products : seed) as Product[])
         .filter((p) => p && typeof p.name === 'string')
-        .map((p) => ({
-          ...p,
-          category: normalizeCategory(p.name, CAT_FIX[p.category] || p.category),
-        }))
+        .map((p) => {
+          // one-time split for items previously imported as "Name (Variant)"
+          let variant = (p.variant || '').trim()
+          let name = p.name
+          if (!variant) {
+            const s = splitVariantName(name)
+            name = s.name
+            variant = s.variant
+          }
+          return {
+            ...p,
+            name,
+            variant,
+            category: normalizeCategory(name, CAT_FIX[p.category] || p.category),
+          }
+        })
       const quotes = ((Array.isArray(d.quotes) ? d.quotes : []) as Quote[])
         .filter((r) => r && typeof r === 'object')
         .map((r) => ({
@@ -58,6 +76,8 @@ function load() {
           customer: { name: '', contact: '', address: '', ...(r.customer && typeof r.customer === 'object' ? r.customer : {}) },
           items: (Array.isArray(r.items) ? r.items : []).map((it: QuoteItem) => ({
             ...it,
+            variant: (it.variant || '').trim() || splitVariantName(it.name || '').variant,
+            name: (it.variant || '').trim() ? it.name : splitVariantName(it.name || '').name,
             cost: it.cost ?? 0,
             margin: it.margin ?? settings.markup ?? 20,
           })),

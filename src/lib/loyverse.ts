@@ -55,33 +55,63 @@ export function importLoyverseCsv(text: string, existing: Product[]): LoyverseRe
   if (iPrice < 0) iPrice = col(['price'])
   let iStock = col(['in stock'])
   const iComp = col(['sku of included item'])
+  const iOpt1 = head.indexOf('option 1 value')
+  const iOpt2 = head.indexOf('option 2 value')
+  const iOpt3 = head.indexOf('option 3 value')
 
   if (iName < 0) throw new Error('No Name column found. Use the Loyverse Back Office Item list Export file.')
 
-  const byName = new Map(existing.map((p) => [p.name.trim().toLowerCase(), p]))
+  const splitVariant = (n: string): { name: string; variant: string } => {
+    const m = n.match(/^(.*)\s+\(([^()]+)\)\s*$/)
+    if (m) return { name: m[1].trim(), variant: m[2].trim() }
+    return { name: n, variant: '' }
+  }
+  const keyOf = (n: string, v: string) => `${n.trim().toLowerCase()}|||${(v || '').trim().toLowerCase()}`
+  const byName = new Map(existing.map((p) => [keyOf(p.name, p.variant || ''), p]))
   const products = [...existing]
   let added = 0, updated = 0, skipped = 0
+  let parentName = '', parentCat = ''
 
   for (let r = 1; r < lines.length; r++) {
     const cells = splitRow(lines[r])
-    const name = (cells[iName] || '').trim()
-    if (!name) { skipped++; continue }
+    let rawName = (cells[iName] || '').trim()
+    if (rawName) {
+      parentName = rawName
+      if (iCat >= 0 && (cells[iCat] || '').trim()) parentCat = (cells[iCat] || '').trim()
+    }
     if (iComp >= 0 && (cells[iComp] || '').trim()) { skipped++; continue } // composite component row
-    const category = normalizeCategory(name, (iCat >= 0 ? cells[iCat] || '' : '').trim() || 'Other')
+    const opts = [iOpt1, iOpt2, iOpt3]
+      .filter((i) => i >= 0)
+      .map((i) => (cells[i] || '').trim())
+      .filter(Boolean)
+    let base = rawName || parentName
+    let variant = opts.join(' / ')
+    if (!base && !variant) { skipped++; continue }
+    if (!rawName && parentName) base = parentName
+    // fixed file from Python already has "Name (Variant)" — split it back apart
+    if (rawName && !variant) {
+      const s = splitVariant(rawName)
+      base = s.name
+      variant = s.variant
+    }
+    const name = base.trim()
+    if (!name) { skipped++; continue }
+    const category = normalizeCategory(name, ((iCat >= 0 ? cells[iCat] || '' : '').trim() || parentCat || 'Other'))
     const price = iPrice >= 0 ? num(cells[iPrice]) : 0
     const cost = iCost >= 0 ? num(cells[iCost]) : 0
     const stock = iStock >= 0 ? Math.round(num(cells[iStock])) : 0
 
-    const key = name.toLowerCase()
+    const key = keyOf(name, variant)
     const ex = byName.get(key)
     if (ex) {
       ex.price = price || ex.price
       ex.category = category !== 'Other' ? category : ex.category
+      ex.variant = variant || ex.variant || ''
       if (iStock >= 0) ex.stock = stock
       if (cost) ex.cost = cost
       updated++
     } else {
-      const p: Product = { id: uid(), name, category, price, stock }
+      const p: Product = { id: uid(), name, variant, category, price, stock }
       if (cost) p.cost = cost
       products.unshift(p)
       byName.set(key, p)
