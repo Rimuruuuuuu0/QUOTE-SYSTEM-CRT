@@ -303,7 +303,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#a9e2d4] via-[#faf6ef] to-[#f7c9a8] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-[#D7A98A] via-[#F9EFE6] to-[#D7A98A] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="flex h-2"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
       <div className="flex items-start">
         <aside className="hidden lg:flex sticky top-0 h-screen w-[72px] shrink-0 flex-col items-center gap-1.5 py-4 bg-white/45 backdrop-blur-[12px] border-r border-white/50 z-30">
@@ -316,7 +316,7 @@ export default function App() {
                 key={tb.id}
                 title={tb.label + (badge ? ` (${badge})` : '')}
                 onClick={() => { setTab(tb.id); window.scrollTo(0, 0) }}
-                className={`relative grid place-items-center h-11 w-11 rounded-xl transition-colors ${active ? 'bg-brand-blue text-white shadow-[0_4px_14px_-4px_rgba(14,124,107,0.7)]' : 'text-slate-600 hover:bg-white/70'}`}
+                className={`relative grid place-items-center h-11 w-11 rounded-xl transition-colors ${active ? 'bg-brand-blue text-white shadow-[0_4px_14px_-4px_rgba(46,26,18,0.7)]' : 'text-slate-600 hover:bg-white/70'}`}
               >
                 {tb.icon}
                 {!!badge && <span className={`absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold grid place-items-center text-white ${tb.id === 'products' ? 'bg-brand-red' : 'bg-amber-500'}`}>{badge}</span>}
@@ -329,7 +329,7 @@ export default function App() {
           </div>
         </aside>
         <div className="flex-1 min-w-0">
-      <header className="sticky top-0 z-20 border-b border-white/40 bg-white/55 dark:bg-slate-900/60 backdrop-blur-[12px] shadow-[0_2px_16px_-6px_rgba(14,124,107,0.35)]">
+      <header className="sticky top-0 z-20 border-b border-white/40 bg-white/55 dark:bg-slate-900/60 backdrop-blur-[12px] shadow-[0_2px_16px_-6px_rgba(46,26,18,0.35)]">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <span className="logo-anim"><img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-10 w-auto object-contain" /></span>
@@ -366,16 +366,16 @@ export default function App() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
-                { label: 'Total quotes', value: String(quotes.length), bar: 'bg-brand-blue', text: 'text-brand-blue' },
-                { label: 'Pending (Draft + Sent)', value: String(quotes.filter((x) => ['Draft','Sent'].includes(x.status)).length), bar: 'bg-amber-500', text: 'text-amber-600' },
-                { label: 'Accepted value', value: money(acceptedVal), bar: 'bg-emerald-500', text: 'text-emerald-600' },
-                { label: 'Products', value: String(products.length), bar: 'bg-brand-red', text: 'text-brand-red' },
+                { label: 'Total quotes', value: String(quotes.length), bar: '#A35A3A', text: 'text-brand-red' },
+                { label: 'Pending (Draft + Sent)', value: String(quotes.filter((x) => ['Draft','Sent'].includes(x.status)).length), bar: '#2E1A12', text: 'text-brand-bluedark' },
+                { label: 'Accepted value', value: money(acceptedVal), bar: '#6A3B2A', text: 'text-brand-blue' },
+                { label: 'Products', value: String(products.length), bar: '#A35A3A', text: 'text-brand-red' },
               ].map((s) => (
-                <Card key={s.label} className="overflow-hidden border-t-4" style={{ borderTopColor: s.bar === 'bg-brand-blue' ? '#0E7C6B' : s.bar === 'bg-brand-red' ? '#E0653A' : s.bar === 'bg-emerald-500' ? '#10b981' : '#f59e0b' }}><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className={`num text-xl mt-1 font-semibold ${s.text}`}>{s.value}</div></CardContent></Card>
+                <Card key={s.label} className="overflow-hidden border-t-4" style={{ borderTopColor: s.bar }}><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className={`num text-xl mt-1 font-semibold ${s.text}`}>{s.value}</div></CardContent></Card>
               ))}
             </div>
             <div className="grid md:grid-cols-2 gap-3">
-              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#f59e0b' }}>
+              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#A35A3A' }}>
                 <CardHeader>Follow up <span className="text-xs font-normal text-slate-500">expired Sent quotes</span></CardHeader>
                 {followUps.map((r) => (
                   <button key={r.id} onClick={() => setView(r)} className="w-full flex justify-between px-4 py-2.5 text-left text-sm hover:bg-amber-50 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
@@ -385,7 +385,7 @@ export default function App() {
                 ))}
                 {!followUps.length && <p className="px-4 py-6 text-center text-sm text-slate-500">Nothing overdue. Every Sent quote is still valid.</p>}
               </Card>
-              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#E0653A' }}>
+              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#6A3B2A' }}>
                 <CardHeader>Restock radar <span className="text-xs font-normal text-slate-500">≤2 left</span></CardHeader>
                 {lowTop.map((p) => (
                   <button key={p.id} onClick={() => { setTab('products'); setPsearch(p.name) }} className="w-full flex justify-between px-4 py-2.5 text-left text-sm hover:bg-red-50 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
@@ -485,7 +485,7 @@ export default function App() {
                 })
                 if (!hist.length && !alerts.length) return null
                 return (
-                  <Card className="border-t-4" style={{ borderTopColor: '#0E7C6B' }}><CardContent className="space-y-2 text-sm">
+                  <Card className="border-t-4" style={{ borderTopColor: '#6A3B2A' }}><CardContent className="space-y-2 text-sm">
                     <CardTitle className="text-sm uppercase tracking-wide text-slate-500">Clerk notes</CardTitle>
                     {!!hist.length && <div>Repeat buyer — <b>{hist.length}</b> past quote(s), <span className="num">{money(histTotal)}</span> lifetime. Last: {hist[0].no} ({hist[0].status}).</div>}
                     {alerts.map((a, i) => <div key={i} className="text-amber-700">⚠ {a}</div>)}

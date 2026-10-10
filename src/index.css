@@ -8,9 +8,9 @@
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-    --primary: 170 78% 27%;
+    --primary: 16 43% 29%;
     --primary-foreground: 0 0% 100%;
-    --accent: 16 72% 56%;
+    --accent: 17 48% 43%;
     --accent-foreground: 0 0% 100%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
@@ -22,9 +22,9 @@
     --foreground: 210 40% 98%;
     --card: 222.2 47% 11%;
     --card-foreground: 210 40% 98%;
-    --primary: 170 60% 45%;
+    --primary: 17 45% 62%;
     --primary-foreground: 0 0% 100%;
-    --accent: 16 75% 62%;
+    --accent: 17 55% 65%;
     --accent-foreground: 0 0% 100%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
@@ -60,7 +60,7 @@
   bottom: 0;
   width: 40%;
   left: -60%;
-  background: linear-gradient(100deg, transparent, rgba(14, 124, 107, 0.35) 45%, rgba(224, 101, 58, 0.35) 55%, transparent);
+  background: linear-gradient(100deg, transparent, rgba(163, 90, 58, 0.4) 45%, rgba(215, 169, 138, 0.5) 55%, transparent);
   transform: skewX(-18deg);
   animation: logo-shine 4.5s ease-in-out infinite;
   pointer-events: none;
