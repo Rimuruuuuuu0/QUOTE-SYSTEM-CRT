@@ -80,12 +80,20 @@ export default function App() {
     if (!query || aloading) return
     setAmsgs((m) => [...m, { role: 'u', text: query }])
     setAinput('')
-    // Smart mode: free Gemini key answers computer Q&A; catalog actions stay local
-    if (aiSmart && gemKey.trim() && !/reorder|restock|low.?stock|same as|last time|again|build under|under ₱|under P/i.test(query)) {
+    // Smart mode: keyless free AI for free-form computer Q&A; catalog actions stay local.
+    // Optional Gemini key (Settings) is preferred for quality when present.
+    const smartOn = aiSmart && !/reorder|restock|low.?stock|same as|last time|again|build under|under ₱|under P/i.test(query)
+    if (smartOn) {
       setAloading(true)
       try {
-        const { askGemini } = await import('@/lib/gemini')
-        const ans = await askGemini(gemKey, query, products)
+        let ans: string
+        if (gemKey.trim()) {
+          const { askGemini } = await import('@/lib/gemini')
+          ans = await askGemini(gemKey, query, products)
+        } else {
+          const { askFreeAI } = await import('@/lib/freeAI')
+          ans = await askFreeAI(query, products)
+        }
         setAmsgs((m) => [...m, { role: 'a', text: ans }])
         return
       } catch (e) {
@@ -557,10 +565,10 @@ export default function App() {
             <Card><CardContent className="space-y-3">
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={aiSmart} onChange={(e) => setAiSmart(e.target.checked)} />
-                Smart answers (free Gemini key, computer topics only){aloading ? ' — thinking…' : ''}
+                Smart answers (free, computer topics only){aloading ? ' — thinking…' : ''}
               </label>
               {aiSmart && !gemKey.trim() && (
-                <p className="text-xs text-amber-600">Smart answers is on but no key saved — add it in Settings (free at aistudio.google.com). Answering from offline knowledge for now.</p>
+                <p className="text-xs text-slate-500">No key needed — uses the free AI. Optional Gemini key in Settings for better quality.</p>
               )}
               <div className="flex flex-wrap gap-2">
                 {['8GB DDR4 under ₱2000', 'Gaming build under 50k', 'What needs reorder?', 'Ryzen B550 combo'].map((s) => (
