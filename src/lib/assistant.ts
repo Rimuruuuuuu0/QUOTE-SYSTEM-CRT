@@ -194,6 +194,31 @@ export function assistQuery(text: string, products: Product[], quotes: Quote[], 
     }
   }
 
+  // 2c. superlatives — most expensive / cheapest (optionally per category)
+  const sup = t.match(/(most expensive|priciest|highest price|cheapest|lowest price|most affordable)/)
+  if (sup) {
+    const catWord = t.match(/\b(cpu|processor|ryzen|intel|gpu|graphics|video|rtx|ram|memory|ddr|ssd|hdd|storage|motherboard|mobo|psu|power|monitor|screen|case|casing|laptop|fan|cooler|keyboard|mouse)\b/)
+    let pool = products.filter((p) => p.stock > 0)
+    if (!pool.length) pool = [...products]
+    if (catWord) {
+      const cw = catWord[1]
+      const inCat = pool.filter((p) => scoreProduct(p, expandTokens([cw])) > 0)
+      if (inCat.length) pool = inCat
+    }
+    const desc = /expensive|priciest|highest/.test(sup[1])
+    pool.sort((a, b) => (desc ? b.price - a.price : a.price - b.price))
+    const top = pool.slice(0, 3)
+    if (top.length) {
+      const lines = top.map((p, i) => `${i + 1}. ${p.name}${p.variant ? ` (${p.variant})` : ''} — ₱${p.price.toLocaleString()} (${p.stock} in stock)`)
+      return {
+        reply: `${desc ? 'Priciest' : 'Cheapest'}${catWord ? ` ${catWord[1].toUpperCase()}` : ''} right now:\n${lines.join('\n')}\nTap below to quote ${desc ? 'the top one' : 'the cheapest'}. Web + AI can tell you the global flagships (9950X / i9-14900K class) — your shop range is above.`,
+        picks: [{ product: top[0], qty: 1 }],
+        warnings: top[0].stock <= 0 ? [`${top[0].name} is out of stock.`] : [],
+        total: top[0].price,
+      }
+    }
+  }
+
   // 3. computer knowledge (offline, ChatGPT-style Q&A limited to computers)
   const kb = kbAnswer(t)
   if (kb) return { reply: kb, picks: [], warnings, total: 0 }

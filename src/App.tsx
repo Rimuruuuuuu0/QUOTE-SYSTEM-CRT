@@ -101,11 +101,27 @@ export default function App() {
           ans = await askFreeAI(query, products, webCtx)
         }
         setAmsgs((m) => [...m, { role: 'a', text: ans }])
+        setAloading(false)
         return
       } catch (e) {
-        setAmsgs((m) => [...m, { role: 'a', text: (e instanceof Error ? e.message : 'Smart answers failed.') + ' Answered locally instead.' }])
-      } finally {
-        setAloading(false)
+        const msg = e instanceof Error ? e.message : 'Smart answers failed.'
+        // Bad key? Don't strand the user — fall back to keyless free AI first.
+        if (/key rejected/i.test(msg)) {
+          try {
+            const { askFreeAI } = await import('@/lib/freeAI')
+            const { webContext } = await import('@/lib/websearch')
+            const ans = await askFreeAI(query, products, await webContext(query))
+            setAmsgs((m) => [...m, { role: 'a', text: ans }, { role: 'a', text: 'Note: saved key was rejected — remove it in Settings to stop seeing this. Keyless mode answered.' }])
+            return
+          } catch {
+            setAmsgs((m) => [...m, { role: 'a', text: 'Saved key rejected and keyless AI unreachable. Answered locally instead — fix or remove the key in Settings.' }])
+          } finally {
+            setAloading(false)
+          }
+        } else {
+          setAmsgs((m) => [...m, { role: 'a', text: msg + ' Answered locally instead.' }])
+          setAloading(false)
+        }
       }
     }
     const r = assistQuery(query, products, quotes, settings.markup || 20)
