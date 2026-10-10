@@ -294,9 +294,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#ccd4ff] via-[#f4f5ff] to-[#ffc9c9]">
+    <div className="min-h-screen bg-gradient-to-br from-[#8fa1ff] via-[#e8ebff] to-[#ff9d9d] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="flex h-2"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
-      <header className="sticky top-0 z-20 border-b-2 border-brand-blue/25 bg-gradient-to-r from-brand-bluesoft via-white to-brand-redsoft dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 backdrop-blur shadow-[0_2px_16px_-6px_rgba(64,80,252,0.35)]">
+      <header className="sticky top-0 z-20 border-b border-white/40 bg-white/55 dark:bg-slate-900/60 backdrop-blur-[12px] shadow-[0_2px_16px_-6px_rgba(64,80,252,0.35)]">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-10 w-auto object-contain" />
