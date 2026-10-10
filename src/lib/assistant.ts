@@ -158,6 +158,42 @@ export function assistQuery(text: string, products: Product[], quotes: Quote[], 
     if (who) return { reply: `No saved quote found for "${who}". Try the customer name as saved, or describe the items.`, picks: [], warnings, total: 0 }
   }
 
+  // 2b. head-to-head compare — real catalog prices, never canned loops
+  const compHit = /\bvs\.?\b|versus|difference|compare|cheaper|expensive|better|which one|\bor\b/i.test(t)
+  if (compHit) {
+    const q2 = expandTokens(words(t))
+    const ranked = products
+      .map((p) => ({ p, s: scoreProduct(p, q2) }))
+      .filter((x) => x.s >= 4)
+      .sort((a, b) => b.s - a.s)
+    const distinct = ranked.filter((r, i, a) => a.findIndex((x) => x.p.name.toLowerCase() === r.p.name.toLowerCase()) === i).slice(0, 2)
+    if (distinct.length === 2) {
+      const [A, B] = distinct.map((x) => x.p)
+      const diff = Math.abs(A.price - B.price)
+      const cheap = A.price <= B.price ? A : B
+      const pricey = A.price <= B.price ? B : A
+      const cmpWarn: string[] = []
+      if (cheap.stock <= 0) cmpWarn.push(`${cheap.name} is out of stock — check alternatives below.`)
+      const ddrA = ddrOf(`${A.name} ${A.variant || ''}`)
+      const ddrB = ddrOf(`${B.name} ${B.variant || ''}`)
+      if (ddrA && ddrB && ddrA !== ddrB) cmpWarn.push(`${A.name} is ${ddrA}, ${B.name} is ${ddrB} — different boards needed.`)
+      const reply =
+        `${A.name}${A.variant ? ` (${A.variant})` : ''} — ₱${A.price.toLocaleString()} (${A.stock} in stock) vs ` +
+        `${B.name}${B.variant ? ` (${B.variant})` : ''} — ₱${B.price.toLocaleString()} (${B.stock} in stock). ` +
+        `Gap: ₱${diff.toLocaleString()}. ` +
+        (cheap.stock > 0
+          ? `${cheap.name} is the value pick — same-class performance for less. Take ${pricey.name} only if the client wants top clocks/box cooler differences.`
+          : `Cheaper option is out of stock, so ${pricey.name} is the quotable one today.`) +
+        ` Turn Smart answers on for a full spec explanation.`
+      return {
+        reply,
+        picks: distinct.map((x) => ({ product: x.p, qty: 1 })),
+        warnings: cmpWarn,
+        total: A.price + B.price,
+      }
+    }
+  }
+
   // 3. computer knowledge (offline, ChatGPT-style Q&A limited to computers)
   const kb = kbAnswer(t)
   if (kb) return { reply: kb, picks: [], warnings, total: 0 }
