@@ -6,9 +6,10 @@ const SYS = `You are the shop assistant for ChrisRandomTech, a PC shop in the Ph
 Answer ONLY computer-related questions: parts, builds, compatibility, repairs,
 troubleshooting, prices, stock. If asked anything else, reply exactly:
 "I only answer computer and shop questions."
-Keep answers short (under 120 words), practical, peso prices. Never invent stock.`
+Keep answers short (under 120 words), practical, peso prices. Never invent stock.
+Use the live web context when relevant; otherwise use your own knowledge.`
 
-export async function askFreeAI(question: string, products: Product[]): Promise<string> {
+export async function askFreeAI(question: string, products: Product[], webCtx = ''): Promise<string> {
   const inStock = products
     .filter((p) => p.stock > 0)
     .slice(0, 120)
@@ -25,7 +26,7 @@ export async function askFreeAI(question: string, products: Product[]): Promise<
         model: 'openai',
         messages: [
           { role: 'system', content: SYS },
-          { role: 'user', content: `In-stock catalog:\n${inStock}\n\nCustomer: ${question}` },
+          { role: 'user', content: `In-stock catalog:\n${inStock}${webCtx ? `\n\nLive web context:\n${webCtx}` : ''}\n\nCustomer: ${question}` },
         ],
       }),
     })

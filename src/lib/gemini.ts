@@ -8,7 +8,7 @@ troubleshooting, prices, stock. If asked anything else, reply exactly:
 "I only answer computer and shop questions."
 Keep answers short (under 120 words), practical, peso prices. Never invent stock.`
 
-export async function askGemini(key: string, question: string, products: Product[]): Promise<string> {
+export async function askGemini(key: string, question: string, products: Product[], webCtx = ''): Promise<string> {
   const inStock = products
     .filter((p) => p.stock > 0)
     .slice(0, 150)
@@ -21,7 +21,7 @@ export async function askGemini(key: string, question: string, products: Product
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: SYS }] },
-        contents: [{ parts: [{ text: `In-stock catalog:\n${inStock}\n\nCustomer: ${question}` }] }],
+        contents: [{ parts: [{ text: `In-stock catalog:\n${inStock}${webCtx ? `\n\nLive web context:\n${webCtx}` : ''}\n\nCustomer: ${question}` }] }],
         generationConfig: { maxOutputTokens: 400, temperature: 0.4 },
       }),
     }

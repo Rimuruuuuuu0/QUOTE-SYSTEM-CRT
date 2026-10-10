@@ -90,13 +90,15 @@ export default function App() {
     if (smartOn) {
       setAloading(true)
       try {
+        const { webContext } = await import('@/lib/websearch')
+        const webCtx = await webContext(query)
         let ans: string
         if (gemKey.trim()) {
           const { askGemini } = await import('@/lib/gemini')
-          ans = await askGemini(gemKey, query, products)
+          ans = await askGemini(gemKey, query, products, webCtx)
         } else {
           const { askFreeAI } = await import('@/lib/freeAI')
-          ans = await askFreeAI(query, products)
+          ans = await askFreeAI(query, products, webCtx)
         }
         setAmsgs((m) => [...m, { role: 'a', text: ans }])
         return
