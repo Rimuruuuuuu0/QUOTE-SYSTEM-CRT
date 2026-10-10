@@ -559,6 +559,9 @@ export default function App() {
                 <input type="checkbox" checked={aiSmart} onChange={(e) => setAiSmart(e.target.checked)} />
                 Smart answers (free Gemini key, computer topics only){aloading ? ' — thinking…' : ''}
               </label>
+              {aiSmart && !gemKey.trim() && (
+                <p className="text-xs text-amber-600">Smart answers is on but no key saved — add it in Settings (free at aistudio.google.com). Answering from offline knowledge for now.</p>
+              )}
               <div className="flex flex-wrap gap-2">
                 {['8GB DDR4 under ₱2000', 'Gaming build under 50k', 'What needs reorder?', 'Ryzen B550 combo'].map((s) => (
                   <Button key={s} variant="outline" size="sm" onClick={() => ask(s)}>{s}</Button>

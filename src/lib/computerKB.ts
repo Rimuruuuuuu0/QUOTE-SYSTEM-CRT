@@ -89,12 +89,24 @@ const T: KBTopic[] = [
 
 export function kbAnswer(text: string): string | null {
   const t = text.toLowerCase()
+  // pair questions ("difference between X and Y") match even with filler words
+  if (t.includes('ddr4') && t.includes('ddr5')) {
+    return T[0].answer
+  }
+  if ((t.includes('3050') && t.includes('4060')) || (t.includes('ryzen') && t.includes('intel') && /vs|versus|difference|compare|better|or/.test(t))) {
+    return (t.includes('3050') ? T.find((x) => x.keys.includes('rtx 3050')) : T.find((x) => x.keys.includes('ryzen vs intel')))?.answer || null
+  }
   let best: KBTopic | null = null
   let bestScore = 0
   for (const topic of T) {
     let s = 0
     for (const k of topic.keys) {
       if (t.includes(k)) s = Math.max(s, k.length >= 8 ? 3 : 2)
+    }
+    // partial credit: 2+ short keys from same topic
+    if (!s) {
+      const hits = topic.keys.filter((k) => k.length < 8 && t.includes(k)).length
+      if (hits >= 2) s = 2
     }
     if (s > bestScore) {
       best = topic
