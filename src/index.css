@@ -43,8 +43,41 @@
   }
 }
 
-@media print {
-  body * {
+.logo-anim {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  border-radius: 0.375rem;
+}
+.logo-anim img {
+  display: block;
+  animation: logo-float 5s ease-in-out infinite;
+}
+.logo-anim::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  left: -60%;
+  background: linear-gradient(100deg, transparent, rgba(64, 80, 252, 0.35) 45%, rgba(245, 11, 11, 0.35) 55%, transparent);
+  transform: skewX(-18deg);
+  animation: logo-shine 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+@keyframes logo-shine {
+  0% { left: -60%; }
+  55%, 100% { left: 130%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-anim img, .logo-anim::after { animation: none; }
+}
+
+@media print {  body * {
     visibility: hidden;
   }
   #print,
