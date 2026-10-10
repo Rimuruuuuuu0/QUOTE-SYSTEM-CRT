@@ -72,7 +72,7 @@ export default function App() {
   const [apicks, setApicks] = useState<APick[]>([])
   const [awarns, setAwarns] = useState<string[]>([])
   const [gemKey, setGemKey] = useState(() => { try { return localStorage.getItem('gemini-key') || '' } catch { return '' } })
-  const [aiSmart, setAiSmart] = useState(false)
+  const [aiSmart, setAiSmart] = useState(true)
   const [aloading, setAloading] = useState(false)
 
   const ask = async (text: string) => {
@@ -82,7 +82,11 @@ export default function App() {
     setAinput('')
     // Smart mode: keyless free AI for free-form computer Q&A; catalog actions stay local.
     // Optional Gemini key (Settings) is preferred for quality when present.
-    const smartOn = aiSmart && !/reorder|restock|low.?stock|same as|last time|again|build under|under ₱|under P/i.test(query)
+    // Question-like queries ALWAYS go to AI (no keyword limits); only clear
+    // catalog actions (reorder, repeat-customer, budget builds) stay local.
+    const isCatalogAction = /reorder|restock|low.?stock|same as|last time|again|build under|under ₱|under P/i.test(query)
+    const looksLikeQuestion = /\?\s*$|^(what|why|how|when|which|who|difference|compare|explain|is |are |can |should|do i|does|versus|vs\b)/i.test(query)
+    const smartOn = aiSmart && (!isCatalogAction || looksLikeQuestion)
     if (smartOn) {
       setAloading(true)
       try {
