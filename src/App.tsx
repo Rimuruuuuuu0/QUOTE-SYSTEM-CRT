@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { importLoyverseCsv } from '@/lib/loyverse'
 import { auth, loadCloud, saveCloud } from '@/lib/firebase'
 import { useStore, blankQuote, newQuoteNo } from '@/lib/store'
-import { money, uid } from '@/lib/utils'
+import { money, photoOf, uid } from '@/lib/utils'
 import { totals, srp, type Product, type Quote, type QuoteItem, type QuoteStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -147,7 +147,7 @@ export default function App() {
       if (ex) return { ...prev, items: prev.items.map((i) => (i.pid === p.id ? { ...i, qty: i.qty + 1 } : i)) }
       const cost = p.cost || 0
       const margin = settings.markup || 20
-      return { ...prev, items: [...prev.items, { key: uid(), pid: p.id, name: p.name, variant: p.variant || '', imageUrl: p.imageUrl || '', qty: 1, cost, margin, price: cost ? srp(cost, margin) : p.price }] }
+      return { ...prev, items: [...prev.items, { key: uid(), pid: p.id, name: p.name, variant: p.variant || '', imageUrl: photoOf(p), qty: 1, cost, margin, price: cost ? srp(cost, margin) : p.price }] }
     })
     setSearch('')
   }
@@ -307,7 +307,10 @@ export default function App() {
                     <tbody>
                       {q.items.map((it, i) => (
                         <tr key={it.key} className="border-t border-slate-100 dark:border-slate-800">
-                          <td className="py-2 pr-2">{it.imageUrl ? <img src={it.imageUrl} alt="" className="h-10 w-10 rounded object-cover border" /> : <span className="text-slate-300 text-xs">—</span>}</td>
+                          <td className="py-2 pr-2">{(() => {
+                            const src = it.imageUrl || photoOf(products.find((p) => p.id === it.pid) || { imageUrl: '', sku: '' })
+                            return src ? <img src={src} alt="" className="h-10 w-10 rounded object-cover border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} /> : <span className="text-slate-300 text-xs">—</span>
+                          })()}</td>
                           <td className="py-2 pr-2"><Input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} /></td>
                           <td className="pr-2"><Input placeholder="e.g. 8GB" value={it.variant || ''} onChange={(e) => setItem(i, { variant: e.target.value })} /></td>
                           <td className="pr-2"><Input type="number" min={1} className="num" value={it.qty} onChange={(e) => setItem(i, { qty: Number(e.target.value) })} /></td>
@@ -475,7 +478,7 @@ export default function App() {
                   <tbody>
                     {products.filter((x) => (catFilter === 'All' || x.category === catFilter) && (x.name + ' ' + (x.variant || '') + x.category).toLowerCase().includes(psearch.toLowerCase())).map((p) => (
                       <tr key={p.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
-                        <td className="p-3">{p.imageUrl ? <img src={p.imageUrl} alt="" className="h-10 w-10 rounded object-cover border" /> : <span className="text-slate-300 text-xs">No photo</span>}</td>
+                        <td className="p-3">{photoOf(p) ? <img src={photoOf(p)} alt="" className="h-10 w-10 rounded object-cover border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} /> : <span className="text-slate-300 text-xs">No photo</span>}</td>
                         <td className="p-3">{p.name}</td><td className="text-brand-blue">{p.variant || '—'}</td><td><Badge className="uppercase tracking-wide">{p.category}</Badge></td>
                         <td className="num text-right text-slate-500">{p.cost ? money(p.cost) : '—'}</td>
                         <td className="num text-right">{money(p.price)}</td>
@@ -588,10 +591,10 @@ export default function App() {
                   <div>Prepared by: {settings.preparedBy || 'Christian'}</div>
                 </div>
               </div>
-              {(view.items || []).some((it) => it.imageUrl) && (
+              {(view.items || []).some((it) => it.imageUrl || photoOf(products.find((p) => p.id === it.pid) || { imageUrl: '', sku: '' })) && (
                 <div className="flex gap-4 pb-4">
-                  {(view.items || []).filter((it) => it.imageUrl).slice(0, 3).map((it) => (
-                    <img key={it.key} src={it.imageUrl} alt={it.name} className="h-32 w-48 rounded border object-contain bg-slate-50" />
+                  {(view.items || []).map((it) => ({ it, src: it.imageUrl || photoOf(products.find((p) => p.id === it.pid) || { imageUrl: '', sku: '' }) })).filter((x) => x.src).slice(0, 3).map((x) => (
+                    <img key={x.it.key} src={x.src} alt={x.it.name} className="h-32 w-48 rounded border object-contain bg-slate-50" />
                   ))}
                 </div>
               )}
@@ -600,7 +603,8 @@ export default function App() {
                 <thead><tr className="bg-brand-bluesoft text-left"><th className="p-2">Photo</th><th className="p-2">Category</th><th className="p-2">Item Description</th><th className="text-right">Quantity</th><th className="text-right">Unit Price</th><th className="text-right p-2">Amount</th></tr></thead>
                 <tbody>{(view.items || []).map((it) => {
                   const prod = products.find((p) => p.id === it.pid)
-                  return (<tr key={it.key} className="border-b"><td className="p-2">{it.imageUrl ? <img src={it.imageUrl} alt="" className="h-12 w-12 rounded object-cover border" /> : <span className="text-slate-300">—</span>}</td><td className="p-2">{prod?.category || ''}</td><td className="p-2">{it.name}{it.variant ? ` (${it.variant})` : ''}</td><td className="num text-right">{it.qty}</td><td className="num text-right">{money(it.price)}</td><td className="num text-right p-2">{money(it.qty * it.price)}</td></tr>)
+                  const src = it.imageUrl || photoOf(prod || { imageUrl: '', sku: '' })
+                  return (<tr key={it.key} className="border-b"><td className="p-2">{src ? <img src={src} alt="" className="h-12 w-12 rounded object-cover border" /> : <span className="text-slate-300">—</span>}</td><td className="p-2">{prod?.category || ''}</td><td className="p-2">{it.name}{it.variant ? ` (${it.variant})` : ''}</td><td className="num text-right">{it.qty}</td><td className="num text-right">{money(it.price)}</td><td className="num text-right p-2">{money(it.qty * it.price)}</td></tr>)
                 })}</tbody>
               </table>
               <div className="ml-auto w-64 mt-4 text-sm space-y-1">

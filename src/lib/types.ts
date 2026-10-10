@@ -17,6 +17,8 @@ export interface Product {
   name: string
   /** Variant e.g. 8GB / White / 3200MHz. Kept separate from name. */
   variant?: string
+  /** Loyverse SKU, used to match supplier photos in /products/. */
+  sku?: string
   category: string
   price: number
   stock: number

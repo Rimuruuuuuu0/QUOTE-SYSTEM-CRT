@@ -58,6 +58,7 @@ export function importLoyverseCsv(text: string, existing: Product[]): LoyverseRe
   const iOpt1 = head.indexOf('option 1 value')
   const iOpt2 = head.indexOf('option 2 value')
   const iOpt3 = head.indexOf('option 3 value')
+  const iSku = col(['sku'], ['included'])
 
   if (iName < 0) throw new Error('No Name column found. Use the Loyverse Back Office Item list Export file.')
 
@@ -96,6 +97,7 @@ export function importLoyverseCsv(text: string, existing: Product[]): LoyverseRe
     }
     const name = base.trim()
     if (!name) { skipped++; continue }
+    const sku = iSku >= 0 ? (cells[iSku] || '').trim() : ''
     const category = normalizeCategory(name, ((iCat >= 0 ? cells[iCat] || '' : '').trim() || parentCat || 'Other'))
     const price = iPrice >= 0 ? num(cells[iPrice]) : 0
     const cost = iCost >= 0 ? num(cells[iCost]) : 0
@@ -107,12 +109,14 @@ export function importLoyverseCsv(text: string, existing: Product[]): LoyverseRe
       ex.price = price || ex.price
       ex.category = category !== 'Other' ? category : ex.category
       ex.variant = variant || ex.variant || ''
+      if (sku) ex.sku = sku
       // never overwrite an existing photo with blank on re-import
       if (iStock >= 0) ex.stock = stock
       if (cost) ex.cost = cost
       updated++
     } else {
       const p: Product = { id: uid(), name, variant, category, price, stock }
+      if (sku) p.sku = sku
       if (cost) p.cost = cost
       products.unshift(p)
       byName.set(key, p)
