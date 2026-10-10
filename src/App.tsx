@@ -147,7 +147,7 @@ export default function App() {
       if (ex) return { ...prev, items: prev.items.map((i) => (i.pid === p.id ? { ...i, qty: i.qty + 1 } : i)) }
       const cost = p.cost || 0
       const margin = settings.markup || 20
-      return { ...prev, items: [...prev.items, { key: uid(), pid: p.id, name: p.name, variant: p.variant || '', qty: 1, cost, margin, price: cost ? srp(cost, margin) : p.price }] }
+      return { ...prev, items: [...prev.items, { key: uid(), pid: p.id, name: p.name, variant: p.variant || '', imageUrl: p.imageUrl || '', qty: 1, cost, margin, price: cost ? srp(cost, margin) : p.price }] }
     })
     setSearch('')
   }
@@ -295,7 +295,7 @@ export default function App() {
                           <span className="num">{money(p.price)}</span>
                         </button>
                       ))}
-                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, variant: '', qty: 1, cost: 0, margin: settings.markup || 20, price: 0 }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-brand-blue border-t">
+                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, variant: '', imageUrl: '', qty: 1, cost: 0, margin: settings.markup || 20, price: 0 }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-brand-blue border-t">
                         Add "{search}" as custom item
                       </button>
                     </div>
@@ -303,10 +303,11 @@ export default function App() {
                 </div>
                 <div className="mt-4 overflow-x-auto">
                   <table className="w-full text-sm min-w-[760px]">
-                    <thead className="text-left text-slate-500"><tr><th className="py-2 font-medium">Item</th><th className="font-medium w-32">Variant</th><th className="font-medium w-16">Qty</th><th className="font-medium w-28">Cost (supplier)</th><th className="font-medium w-20">+ %</th><th className="font-medium w-28">SRP</th><th className="font-medium w-28 text-right">Amount</th><th className="w-8" /></tr></thead>
+                    <thead className="text-left text-slate-500"><tr><th className="py-2 font-medium w-12">Photo</th><th className="py-2 font-medium">Item</th><th className="font-medium w-32">Variant</th><th className="font-medium w-16">Qty</th><th className="font-medium w-28">Cost (supplier)</th><th className="font-medium w-20">+ %</th><th className="font-medium w-28">SRP</th><th className="font-medium w-28 text-right">Amount</th><th className="w-8" /></tr></thead>
                     <tbody>
                       {q.items.map((it, i) => (
                         <tr key={it.key} className="border-t border-slate-100 dark:border-slate-800">
+                          <td className="py-2 pr-2">{it.imageUrl ? <img src={it.imageUrl} alt="" className="h-10 w-10 rounded object-cover border" /> : <span className="text-slate-300 text-xs">—</span>}</td>
                           <td className="py-2 pr-2"><Input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} /></td>
                           <td className="pr-2"><Input placeholder="e.g. 8GB" value={it.variant || ''} onChange={(e) => setItem(i, { variant: e.target.value })} /></td>
                           <td className="pr-2"><Input type="number" min={1} className="num" value={it.qty} onChange={(e) => setItem(i, { qty: Number(e.target.value) })} /></td>
@@ -470,10 +471,11 @@ export default function App() {
             <Card>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[680px]">
-                  <thead className="text-left text-slate-500"><tr className="border-b"><th className="p-3 font-medium">Product</th><th>Variant</th><th>Category</th><th className="text-right">Cost</th><th className="text-right">SRP</th><th className="text-right">Stock</th><th className="p-3" /></tr></thead>
+                  <thead className="text-left text-slate-500"><tr className="border-b"><th className="p-3 font-medium">Photo</th><th className="font-medium">Product</th><th>Variant</th><th>Category</th><th className="text-right">Cost</th><th className="text-right">SRP</th><th className="text-right">Stock</th><th className="p-3" /></tr></thead>
                   <tbody>
                     {products.filter((x) => (catFilter === 'All' || x.category === catFilter) && (x.name + ' ' + (x.variant || '') + x.category).toLowerCase().includes(psearch.toLowerCase())).map((p) => (
                       <tr key={p.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
+                        <td className="p-3">{p.imageUrl ? <img src={p.imageUrl} alt="" className="h-10 w-10 rounded object-cover border" /> : <span className="text-slate-300 text-xs">No photo</span>}</td>
                         <td className="p-3">{p.name}</td><td className="text-brand-blue">{p.variant || '—'}</td><td><Badge className="uppercase tracking-wide">{p.category}</Badge></td>
                         <td className="num text-right text-slate-500">{p.cost ? money(p.cost) : '—'}</td>
                         <td className="num text-right">{money(p.price)}</td>
@@ -499,8 +501,9 @@ export default function App() {
             <h1 className="text-2xl font-semibold">Settings</h1>
             <Card><CardContent className="space-y-3">
               <label className="block text-sm">Store name<Input className="mt-1" value={settings.store} onChange={(e) => setSettings({ ...settings, store: e.target.value })} /></label>
-              <label className="block text-sm">Address<Input className="mt-1" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} /></label>
+              <label className="block text-sm">Company address<Input className="mt-1" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} /></label>
               <label className="block text-sm">Phone or email<Input className="mt-1" value={settings.contact} onChange={(e) => setSettings({ ...settings, contact: e.target.value })} /></label>
+              <label className="block text-sm">Prepared by<Input className="mt-1" placeholder="e.g. Christian" value={settings.preparedBy || ''} onChange={(e) => setSettings({ ...settings, preparedBy: e.target.value })} /></label>
               <div className="grid grid-cols-3 gap-3">
                 <label className="block text-sm">Default markup %<Input type="number" className="mt-1 num" value={settings.markup} onChange={(e) => setSettings({ ...settings, markup: Number(e.target.value) })} /></label>
                 <label className="block text-sm">Valid days<Input type="number" className="mt-1 num" value={settings.validity} onChange={(e) => setSettings({ ...settings, validity: Number(e.target.value) })} /></label>
@@ -522,6 +525,15 @@ export default function App() {
             <div className="space-y-3">
               <Input placeholder="Product name" value={pf.name} onChange={(e) => setPf({ ...pf, name: e.target.value })} />
               <Input placeholder="Variant (e.g. 8GB, White, 3200MHz)" value={(pf as Product).variant || ''} onChange={(e) => setPf({ ...pf, variant: e.target.value })} />
+              <label className="block text-sm">Photo URL<Input placeholder="https://…" className="mt-1" value={(pf as Product).imageUrl || ''} onChange={(e) => setPf({ ...pf, imageUrl: e.target.value })} /></label>
+              <label className="inline-flex items-center rounded-md border px-4 py-2 text-sm cursor-pointer">Upload photo<input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                const f = e.target.files?.[0]; if (!f) return
+                if (f.size > 700 * 1024) { alert('Photo too big for cloud save. Use under 700KB or paste a URL instead.'); e.target.value = ''; return }
+                const r = new FileReader()
+                r.onload = () => setPf((prev) => prev ? { ...prev, imageUrl: String(r.result) } : prev)
+                r.readAsDataURL(f); e.target.value = ''
+              }} /></label>
+              {(pf as Product).imageUrl ? <img src={(pf as Product).imageUrl} alt="" className="h-20 w-20 rounded object-cover border" /> : null}
               <Select value={pf.category} onChange={(e) => setPf({ ...pf, category: e.target.value })}>
                 {CATS.map((c) => <option key={c}>{c}</option>)}
               </Select>
@@ -549,21 +561,55 @@ export default function App() {
               <Button variant="secondary" onClick={() => setView(null)}>Close</Button>
             </div>
             <div id="print" className="bg-white text-slate-900 rounded-xl shadow-xl p-8">
-              <div className="flex justify-between border-b-2 border-brand-blue pb-4">
-                <div><img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-12 w-auto object-contain mb-2" /><div className="text-sm text-slate-600">{settings.store}</div><div className="text-sm text-slate-600">{settings.address}</div><div className="text-sm text-slate-600">{settings.contact}</div></div>
-                <div className="text-right"><div className="text-2xl font-bold"><span className="text-brand-blue">Quota</span><span className="text-brand-red">tion</span></div><div className="num text-sm">{view.no}</div><div className="text-sm text-slate-600">Date: {view.date}</div><div className="text-sm text-slate-600">Valid until: {view.valid}</div></div>
+              <div className="bg-brand-blue text-white rounded-t-lg px-4 py-2 flex justify-between items-center">
+                <span className="font-bold tracking-wide">CHRISRANDOMTECH IT SOLUTIONS</span>
+                <span className="italic">System</span>
               </div>
-              <div className="py-4 text-sm"><div className="text-slate-500">Prepared for</div><div className="font-semibold">{view.customer?.name}</div><div>{view.customer?.contact}</div><div>{view.customer?.address}</div><Badge>{view.status}</Badge></div>
+              <div className="flex justify-between border-b-2 border-brand-blue pb-4 pt-3">
+                <div>
+                  <div className="text-sm text-slate-600">Company Address: {settings.address || settings.store}</div>
+                  <div className="text-sm text-slate-600">Tel No.: {settings.contact}</div>
+                  <div className="text-sm text-slate-600">Qtn No.: <span className="num">{view.no}</span></div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-slate-600">Date: {view.date}</div>
+                  <div className="text-sm text-slate-600">Quotation & Invoice Guide</div>
+                </div>
+              </div>
+              <div className="flex justify-between py-3 text-sm">
+                <div>
+                  <div>Quotation For: <span className="font-semibold">{view.customer?.name}</span></div>
+                  <div>Address: {view.customer?.address}</div>
+                  <div>Email: {view.customer?.contact}</div>
+                  <div>Contact No.: {view.customer?.contact}</div>
+                </div>
+                <div className="text-right">
+                  <div>Quotation validity: {view.valid}</div>
+                  <div>Prepared by: {settings.preparedBy || 'Christian'}</div>
+                </div>
+              </div>
+              {(view.items || []).some((it) => it.imageUrl) && (
+                <div className="flex gap-4 pb-4">
+                  {(view.items || []).filter((it) => it.imageUrl).slice(0, 3).map((it) => (
+                    <img key={it.key} src={it.imageUrl} alt={it.name} className="h-32 w-48 rounded border object-contain bg-slate-50" />
+                  ))}
+                </div>
+              )}
+              <div className="py-2 text-sm"><Badge>{view.status}</Badge></div>
               <table className="w-full text-sm">
-                <thead><tr className="bg-brand-bluesoft text-left"><th className="p-2">Item</th><th>Variant</th><th className="text-right">Qty</th><th className="text-right">Unit price</th><th className="text-right p-2">Amount</th></tr></thead>
-                <tbody>{(view.items || []).map((it) => (<tr key={it.key} className="border-b"><td className="p-2">{it.name}</td><td className="p-2 text-slate-600">{it.variant || '—'}</td><td className="num text-right">{it.qty}</td><td className="num text-right">{money(it.price)}</td><td className="num text-right p-2">{money(it.qty * it.price)}</td></tr>))}</tbody>
+                <thead><tr className="bg-brand-bluesoft text-left"><th className="p-2">Photo</th><th className="p-2">Category</th><th className="p-2">Item Description</th><th className="text-right">Quantity</th><th className="text-right">Unit Price</th><th className="text-right p-2">Amount</th></tr></thead>
+                <tbody>{(view.items || []).map((it) => {
+                  const prod = products.find((p) => p.id === it.pid)
+                  return (<tr key={it.key} className="border-b"><td className="p-2">{it.imageUrl ? <img src={it.imageUrl} alt="" className="h-12 w-12 rounded object-cover border" /> : <span className="text-slate-300">—</span>}</td><td className="p-2">{prod?.category || ''}</td><td className="p-2">{it.name}{it.variant ? ` (${it.variant})` : ''}</td><td className="num text-right">{it.qty}</td><td className="num text-right">{money(it.price)}</td><td className="num text-right p-2">{money(it.qty * it.price)}</td></tr>)
+                })}</tbody>
               </table>
               <div className="ml-auto w-64 mt-4 text-sm space-y-1">
                 <div className="flex justify-between"><span>Subtotal</span><span className="num">{money(totals(view).sub)}</span></div>
-                {totals(view).disc > 0 && <div className="flex justify-between"><span>Discount</span><span className="num">-{money(totals(view).disc)}</span></div>}
-                <div className="flex justify-between text-base font-bold border-t pt-2"><span>Total</span><span className="num">{money(totals(view).total)}</span></div>
+                {totals(view).disc > 0 && <div className="flex justify-between"><span>Package Discount</span><span className="num">-{money(totals(view).disc)}</span></div>}
+                <div className="flex justify-between text-base font-bold border-t pt-2"><span>TOTAL</span><span className="num">{money(totals(view).total)}</span></div>
               </div>
               {view.notes && <div className="mt-6 text-sm text-slate-600 whitespace-pre-line">{view.notes}</div>}
+              <div className="mt-6 text-[11px] text-slate-500">If you have any questions concerning this quotation, please contact us.<br />Tel No./CP No. {settings.contact}</div>
             </div>
           </div>
         </div>

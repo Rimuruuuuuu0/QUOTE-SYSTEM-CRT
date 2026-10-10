@@ -24,6 +24,7 @@ const defaultSettings: Settings = {
   store: 'ChrisRandomTech',
   address: '',
   contact: '',
+  preparedBy: '',
   markup: 20,
   validity: 7,
   prefix: 'Q',
@@ -66,6 +67,7 @@ function load() {
             ...p,
             name,
             variant,
+            imageUrl: p.imageUrl || '',
             category: normalizeCategory(name, CAT_FIX[p.category] || p.category),
           }
         })
@@ -78,6 +80,7 @@ function load() {
             ...it,
             variant: (it.variant || '').trim() || splitVariantName(it.name || '').variant,
             name: (it.variant || '').trim() ? it.name : splitVariantName(it.name || '').name,
+            imageUrl: it.imageUrl || '',
             cost: it.cost ?? 0,
             margin: it.margin ?? settings.markup ?? 20,
           })),

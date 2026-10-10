@@ -107,6 +107,7 @@ export function importLoyverseCsv(text: string, existing: Product[]): LoyverseRe
       ex.price = price || ex.price
       ex.category = category !== 'Other' ? category : ex.category
       ex.variant = variant || ex.variant || ''
+      // never overwrite an existing photo with blank on re-import
       if (iStock >= 0) ex.stock = stock
       if (cost) ex.cost = cost
       updated++

@@ -21,6 +21,8 @@ export interface Product {
   price: number
   stock: number
   cost?: number
+  /** Photo URL (https) or dataURL. Shown in catalog, quote lines, and printout. */
+  imageUrl?: string
 }
 
 export interface QuoteItem {
@@ -29,6 +31,8 @@ export interface QuoteItem {
   name: string
   /** Variant copied from product at add-time; editable per line. */
   variant?: string
+  /** Snapshot of product photo at add-time so quotes keep images. */
+  imageUrl?: string
   qty: number
   /** Supplier base price (cost). */
   cost: number
@@ -57,6 +61,8 @@ export interface Settings {
   store: string
   address: string
   contact: string
+  /** Name shown as "Prepared by" on the printed quotation. */
+  preparedBy?: string
   /** Default markup % over supplier cost. */
   markup: number
   validity: number
