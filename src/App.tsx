@@ -294,9 +294,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-bluesoft/60 via-slate-50 to-brand-redsoft/60">
-      <div className="flex h-1.5"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
-      <header className="sticky top-0 z-20 border-b-2 border-brand-blue/15 bg-white/95 dark:bg-slate-900/95 backdrop-blur shadow-[0_2px_16px_-6px_rgba(64,80,252,0.35)]">
+    <div className="min-h-screen bg-gradient-to-br from-[#ccd4ff] via-[#f4f5ff] to-[#ffc9c9]">
+      <div className="flex h-2"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
+      <header className="sticky top-0 z-20 border-b-2 border-brand-blue/25 bg-gradient-to-r from-brand-bluesoft via-white to-brand-redsoft dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 backdrop-blur shadow-[0_2px_16px_-6px_rgba(64,80,252,0.35)]">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-10 w-auto object-contain" />
@@ -338,7 +338,7 @@ export default function App() {
                 { label: 'Accepted value', value: money(acceptedVal), bar: 'bg-emerald-500', text: 'text-emerald-600' },
                 { label: 'Products', value: String(products.length), bar: 'bg-brand-red', text: 'text-brand-red' },
               ].map((s) => (
-                <Card key={s.label} className="overflow-hidden"><div className={`h-1.5 ${s.bar}`} /><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className={`num text-xl mt-1 font-semibold ${s.text}`}>{s.value}</div></CardContent></Card>
+                <Card key={s.label} className="overflow-hidden border-t-4" style={{ borderTopColor: s.bar === 'bg-brand-blue' ? '#4050FC' : s.bar === 'bg-brand-red' ? '#F50B0B' : s.bar === 'bg-emerald-500' ? '#10b981' : '#f59e0b' }}><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className={`num text-xl mt-1 font-semibold ${s.text}`}>{s.value}</div></CardContent></Card>
               ))}
             </div>
             <Card>
