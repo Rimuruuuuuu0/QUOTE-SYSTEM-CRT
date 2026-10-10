@@ -1,5 +1,6 @@
 import type { Product, Quote } from './types'
 import { srp } from './types'
+import { isComputerRelated, kbAnswer, OFFTOPIC } from './computerKB'
 
 export interface Pick {
   product: Product
@@ -157,7 +158,14 @@ export function assistQuery(text: string, products: Product[], quotes: Quote[], 
     if (who) return { reply: `No saved quote found for "${who}". Try the customer name as saved, or describe the items.`, picks: [], warnings, total: 0 }
   }
 
-  // 3. product search / build
+  // 3. computer knowledge (offline, ChatGPT-style Q&A limited to computers)
+  const kb = kbAnswer(t)
+  if (kb) return { reply: kb, picks: [], warnings, total: 0 }
+  if (OFFTOPIC.test(t)) {
+    return { reply: 'I only answer computer and shop questions (parts, builds, repairs, prices, stock). Ask me about those!', picks: [], warnings, total: 0 }
+  }
+
+  // 3b. product search / build
   const budget = parseBudget(t)
   const qtoks = expandTokens(words(t).filter((w) => !['under', 'below', 'above', 'over', 'with', 'and', 'for', 'the', 'find', 'search', 'need', 'want', 'gaming', 'build', 'quote', 'price', 'cheap', 'budget'].includes(w)))
   const scored = products
@@ -166,7 +174,10 @@ export function assistQuery(text: string, products: Product[], quotes: Quote[], 
     .sort((a, b) => b.s - a.s || (b.p.stock > 0 ? 1 : 0) - (a.p.stock > 0 ? 1 : 0) || a.p.price - b.p.price)
 
   if (!scored.length) {
-    return { reply: 'No match in your catalog. Try brand, size, or category words (e.g. "Ryzen", "DDR4 8GB", "B550", "monitor 24").', picks: [], warnings, total: 0 }
+    if (!isComputerRelated(t)) {
+      return { reply: 'I only answer computer and shop questions (parts, builds, repairs, prices, stock). Rephrase with computer words and I will help.', picks: [], warnings, total: 0 }
+    }
+    return { reply: 'Good question — I do not have a ready answer for that one yet. Try a part ("what PSU for RTX 4060?"), a problem ("PC has no display"), or catalog words ("Ryzen", "DDR4 8GB", "B550").', picks: [], warnings, total: 0 }
   }
 
   // dedupe variants of same base: keep best 2 per base name unless query names variant

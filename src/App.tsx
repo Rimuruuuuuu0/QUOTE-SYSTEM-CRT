@@ -71,15 +71,33 @@ export default function App() {
   const [ainput, setAinput] = useState('')
   const [apicks, setApicks] = useState<APick[]>([])
   const [awarns, setAwarns] = useState<string[]>([])
+  const [gemKey, setGemKey] = useState(() => { try { return localStorage.getItem('gemini-key') || '' } catch { return '' } })
+  const [aiSmart, setAiSmart] = useState(false)
+  const [aloading, setAloading] = useState(false)
 
-  const ask = (text: string) => {
+  const ask = async (text: string) => {
     const query = text.trim()
-    if (!query) return
+    if (!query || aloading) return
+    setAmsgs((m) => [...m, { role: 'u', text: query }])
+    setAinput('')
+    // Smart mode: free Gemini key answers computer Q&A; catalog actions stay local
+    if (aiSmart && gemKey.trim() && !/reorder|restock|low.?stock|same as|last time|again|build under|under ₱|under P/i.test(query)) {
+      setAloading(true)
+      try {
+        const { askGemini } = await import('@/lib/gemini')
+        const ans = await askGemini(gemKey, query, products)
+        setAmsgs((m) => [...m, { role: 'a', text: ans }])
+        return
+      } catch (e) {
+        setAmsgs((m) => [...m, { role: 'a', text: (e instanceof Error ? e.message : 'Smart answers failed.') + ' Answered locally instead.' }])
+      } finally {
+        setAloading(false)
+      }
+    }
     const r = assistQuery(query, products, quotes, settings.markup || 20)
-    setAmsgs((m) => [...m, { role: 'u', text: query }, { role: 'a', text: r.reply }])
+    setAmsgs((m) => [...m, { role: 'a', text: r.reply }])
     setApicks(r.picks)
     setAwarns(r.warnings)
-    setAinput('')
   }
 
   const applyPicks = () => {
@@ -537,6 +555,10 @@ export default function App() {
           <section className="max-w-2xl space-y-4">
             <h1 className="text-2xl font-semibold">Assistant <span className="text-sm font-normal text-slate-500">free · offline · uses your catalog</span></h1>
             <Card><CardContent className="space-y-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={aiSmart} onChange={(e) => setAiSmart(e.target.checked)} />
+                Smart answers (free Gemini key, computer topics only){aloading ? ' — thinking…' : ''}
+              </label>
               <div className="flex flex-wrap gap-2">
                 {['8GB DDR4 under ₱2000', 'Gaming build under 50k', 'What needs reorder?', 'Ryzen B550 combo'].map((s) => (
                   <Button key={s} variant="outline" size="sm" onClick={() => ask(s)}>{s}</Button>
@@ -582,6 +604,8 @@ export default function App() {
               <label className="block text-sm">Company address<Input className="mt-1" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} /></label>
               <label className="block text-sm">Phone or email<Input className="mt-1" value={settings.contact} onChange={(e) => setSettings({ ...settings, contact: e.target.value })} /></label>
               <label className="block text-sm">Prepared by<Input className="mt-1" placeholder="e.g. Christian" value={settings.preparedBy || ''} onChange={(e) => setSettings({ ...settings, preparedBy: e.target.value })} /></label>
+              <label className="block text-sm">Free Gemini key (optional, stays in this browser only)<Input type="password" className="mt-1" placeholder="Paste from aistudio.google.com" value={gemKey} onChange={(e) => { setGemKey(e.target.value); try { localStorage.setItem('gemini-key', e.target.value) } catch {} }} /></label>
+              <p className="text-[11px] text-slate-400">Get a free key at aistudio.google.com → Get API key. Never shared to the cloud. Powers Smart answers in the Assistant tab.</p>
               <div className="grid grid-cols-3 gap-3">
                 <label className="block text-sm">Default markup %<Input type="number" className="mt-1 num" value={settings.markup} onChange={(e) => setSettings({ ...settings, markup: Number(e.target.value) })} /></label>
                 <label className="block text-sm">Valid days<Input type="number" className="mt-1 num" value={settings.validity} onChange={(e) => setSettings({ ...settings, validity: Number(e.target.value) })} /></label>
