@@ -209,8 +209,8 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen grid place-items-center p-4">
-        <Card className="w-full max-w-sm"><CardContent className="space-y-3 pt-6">
+      <div className="min-h-screen grid place-items-center p-4 bg-gradient-to-br from-brand-bluedark via-brand-blue to-brand-reddark">
+        <Card className="w-full max-w-sm border-t-4 border-t-brand-red overflow-hidden"><CardContent className="space-y-3 pt-6">
           <img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-12 w-auto object-contain mx-auto" />
           <h1 className="text-xl font-semibold text-center">Sign in</h1>
           <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -294,9 +294,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="flex h-1"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
-      <header className="sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
+    <div className="min-h-screen bg-gradient-to-br from-brand-bluesoft/60 via-slate-50 to-brand-redsoft/60">
+      <div className="flex h-1.5"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
+      <header className="sticky top-0 z-20 border-b-2 border-brand-blue/15 bg-white/95 dark:bg-slate-900/95 backdrop-blur shadow-[0_2px_16px_-6px_rgba(64,80,252,0.35)]">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-10 w-auto object-contain" />
@@ -328,17 +328,17 @@ export default function App() {
         {tab === 'dash' && (
           <section className="space-y-6">
             <div className="flex items-end justify-between flex-wrap gap-3">
-              <h1 className="text-2xl font-semibold">Overview</h1>
-              <Button onClick={() => { resetQuote(); setTab('new') }}><Plus size={15} /> New quote</Button>
+              <h1 className="text-2xl font-semibold">Overview <span className="inline-block h-1.5 w-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-red align-middle ml-1" /></h1>
+              <Button variant="accent" onClick={() => { resetQuote(); setTab('new') }}><Plus size={15} /> New quote</Button>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
-                { label: 'Total quotes', value: String(quotes.length) },
-                { label: 'Pending (Draft + Sent)', value: String(quotes.filter((x) => ['Draft','Sent'].includes(x.status)).length) },
-                { label: 'Accepted value', value: money(acceptedVal) },
-                { label: 'Products', value: String(products.length) },
+                { label: 'Total quotes', value: String(quotes.length), bar: 'bg-brand-blue', text: 'text-brand-blue' },
+                { label: 'Pending (Draft + Sent)', value: String(quotes.filter((x) => ['Draft','Sent'].includes(x.status)).length), bar: 'bg-amber-500', text: 'text-amber-600' },
+                { label: 'Accepted value', value: money(acceptedVal), bar: 'bg-emerald-500', text: 'text-emerald-600' },
+                { label: 'Products', value: String(products.length), bar: 'bg-brand-red', text: 'text-brand-red' },
               ].map((s) => (
-                <Card key={s.label}><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className="num text-xl mt-1">{s.value}</div></CardContent></Card>
+                <Card key={s.label} className="overflow-hidden"><div className={`h-1.5 ${s.bar}`} /><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className={`num text-xl mt-1 font-semibold ${s.text}`}>{s.value}</div></CardContent></Card>
               ))}
             </div>
             <Card>
@@ -450,7 +450,7 @@ export default function App() {
         {tab === 'quotes' && (
           <section className="space-y-4">
             <div className="flex flex-wrap gap-3 justify-between items-center">
-              <h1 className="text-2xl font-semibold">Saved quotations</h1>
+              <h1 className="text-2xl font-semibold">Saved quotations <span className="inline-block h-1.5 w-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-red align-middle ml-1" /></h1>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => document.getElementById('load-quote-file')?.click()}><Upload size={13} /> Load from file</Button>
                 <input id="load-quote-file" type="file" accept=".json" className="hidden" onChange={(e) => {
@@ -516,7 +516,7 @@ export default function App() {
         {tab === 'products' && (
           <section className="space-y-4">
             <div className="flex flex-wrap gap-3 justify-between items-center">
-              <h1 className="text-2xl font-semibold">Product catalog</h1>
+              <h1 className="text-2xl font-semibold">Product catalog <span className="inline-block h-1.5 w-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-red align-middle ml-1" /></h1>
               <div className="flex gap-2 flex-wrap">
                 <Input className="!w-56" placeholder="Search products" value={psearch} onChange={(e) => setPsearch(e.target.value)} />
                 <Button variant="outline" onClick={() => document.getElementById('loyverse-csv')?.click()}><Upload size={13} /> Import</Button>
@@ -632,7 +632,7 @@ export default function App() {
 
         {tab === 'settings' && (
           <section className="max-w-xl space-y-4">
-            <h1 className="text-2xl font-semibold">Settings</h1>
+            <h1 className="text-2xl font-semibold">Settings <span className="inline-block h-1.5 w-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-red align-middle ml-1" /></h1>
             <Card><CardContent className="space-y-3">
               <label className="block text-sm">Store name<Input className="mt-1" value={settings.store} onChange={(e) => setSettings({ ...settings, store: e.target.value })} /></label>
               <label className="block text-sm">Company address<Input className="mt-1" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} /></label>
