@@ -158,8 +158,9 @@ export function assistQuery(text: string, products: Product[], quotes: Quote[], 
     if (who) return { reply: `No saved quote found for "${who}". Try the customer name as saved, or describe the items.`, picks: [], warnings, total: 0 }
   }
 
-  // 2b. head-to-head compare — real catalog prices, never canned loops
-  const compHit = /\bvs\.?\b|versus|difference|compare|cheaper|expensive|better|which one|\bor\b/i.test(t)
+  // 2b. head-to-head compare — real catalog prices, never canned loops.
+  // Superlatives ("most expensive") are handled in 2c below, not here.
+  const compHit = /\bvs\.?\b|versus|difference|compare|cheaper|expensive|better|which one/i.test(t) && !/(most expensive|priciest|highest price|cheapest|lowest price|most affordable)/.test(t)
   if (compHit) {
     const q2 = expandTokens(words(t))
     const ranked = products

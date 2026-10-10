@@ -105,16 +105,17 @@ export default function App() {
         return
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Smart answers failed.'
-        // Bad key? Don't strand the user — fall back to keyless free AI first.
-        if (/key rejected/i.test(msg)) {
+        // Gemini failed (bad/retired model, bad key, limits): try keyless free AI.
+        // Keyless was already the engine: go straight to local answers.
+        if (gemKey.trim()) {
           try {
             const { askFreeAI } = await import('@/lib/freeAI')
             const { webContext } = await import('@/lib/websearch')
             const ans = await askFreeAI(query, products, await webContext(query))
-            setAmsgs((m) => [...m, { role: 'a', text: ans }, { role: 'a', text: 'Note: saved key was rejected — remove it in Settings to stop seeing this. Keyless mode answered.' }])
+            setAmsgs((m) => [...m, { role: 'a', text: ans }, { role: 'a', text: 'Note: Gemini key path failed (' + msg + ') — keyless mode answered. Check the key in Settings.' }])
             return
           } catch {
-            setAmsgs((m) => [...m, { role: 'a', text: 'Saved key rejected and keyless AI unreachable. Answered locally instead — fix or remove the key in Settings.' }])
+            setAmsgs((m) => [...m, { role: 'a', text: msg + ' Answered locally instead — check the key in Settings.' }])
           } finally {
             setAloading(false)
           }
