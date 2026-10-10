@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
-import { LogOut, Cloud, CloudOff, Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload, Bot } from 'lucide-react'
+import { LogOut, Cloud, CloudOff, Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload, Bot, Sun, Moon, Monitor } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input, Textarea, Select } from '@/components/ui/input'
@@ -67,6 +67,23 @@ export default function App() {
   const [loginErr, setLoginErr] = useState('')
   const [cloud, setCloud] = useState<'loading' | 'ready' | 'saving'>('loading')
   const savedRef = useRef('')
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
+    try { return (localStorage.getItem('crt-theme') as 'light' | 'dark' | 'system') || 'system' } catch { return 'system' }
+  })
+
+  useEffect(() => {
+    const apply = () => {
+      const dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      document.documentElement.classList.toggle('dark', dark)
+    }
+    apply()
+    try { localStorage.setItem('crt-theme', theme) } catch {}
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [theme])
+
+  const cycleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : t === 'dark' ? 'system' : 'light'))
   const [amsgs, setAmsgs] = useState<{ role: 'u' | 'a'; text: string }[]>([])
   const [ainput, setAinput] = useState('')
   const [apicks, setApicks] = useState<APick[]>([])
@@ -303,10 +320,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#D7A98A] via-[#F9EFE6] to-[#D7A98A] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-[#D7A98A] via-[#F9EFE6] to-[#D7A98A] dark:from-[#160C07] dark:via-[#2A170E] dark:to-[#160C07]">
       <div className="flex h-2"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
       <div className="flex items-start">
-        <aside className="hidden lg:flex sticky top-0 h-screen w-[72px] shrink-0 flex-col items-center gap-1.5 py-4 bg-white/45 backdrop-blur-[12px] border-r border-white/50 z-30">
+        <aside className="hidden lg:flex sticky top-0 h-screen w-[72px] shrink-0 flex-col items-center gap-1.5 py-4 bg-white/45 dark:bg-[#241209]/80 backdrop-blur-[12px] border-r border-white/50 dark:border-[#A35A3A]/25 z-30">
           <img src="/logo.png" alt="CRT" className="h-9 w-9 rounded-lg object-contain bg-white shadow mb-2" title="ChrisRandomTech" />
           {TABS.map((tb) => {
             const active = tab === tb.id
@@ -316,7 +333,7 @@ export default function App() {
                 key={tb.id}
                 title={tb.label + (badge ? ` (${badge})` : '')}
                 onClick={() => { setTab(tb.id); window.scrollTo(0, 0) }}
-                className={`relative grid place-items-center h-11 w-11 rounded-xl transition-colors ${active ? 'bg-brand-blue text-white shadow-[0_4px_14px_-4px_rgba(46,26,18,0.7)]' : 'text-slate-600 hover:bg-white/70'}`}
+                className={`relative grid place-items-center h-11 w-11 rounded-xl transition-colors ${active ? 'bg-brand-blue text-white shadow-[0_4px_14px_-4px_rgba(46,26,18,0.7)]' : 'text-slate-600 dark:text-[#D7A98A] hover:bg-white/70 dark:hover:bg-white/10'}`}
               >
                 {tb.icon}
                 {!!badge && <span className={`absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold grid place-items-center text-white ${tb.id === 'products' ? 'bg-brand-red' : 'bg-amber-500'}`}>{badge}</span>}
@@ -325,11 +342,11 @@ export default function App() {
           })}
           <div className="mt-auto flex flex-col items-center gap-1.5 pb-1">
             <span className={`h-2.5 w-2.5 rounded-full ${cloud === 'ready' ? 'bg-emerald-500' : cloud === 'saving' ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'}`} title={cloud === 'ready' ? 'Saved to cloud' : cloud} />
-            <span className="num text-[10px] font-semibold text-brand-bluedark" title="Accepted this month">{monthVal >= 1000 ? `₱${Math.round(monthVal / 1000)}k` : money(monthVal)}</span>
+            <span className="num text-[10px] font-semibold text-brand-bluedark dark:text-[#F9EFE6]" title="Accepted this month">{monthVal >= 1000 ? `₱${Math.round(monthVal / 1000)}k` : money(monthVal)}</span>
           </div>
         </aside>
         <div className="flex-1 min-w-0">
-      <header className="sticky top-0 z-20 border-b border-white/40 bg-white/55 dark:bg-slate-900/60 backdrop-blur-[12px] shadow-[0_2px_16px_-6px_rgba(46,26,18,0.35)]">
+      <header className="sticky top-0 z-20 border-b border-white/40 bg-white/55 dark:bg-[#241209]/80 dark:border-[#A35A3A]/25 backdrop-blur-[12px] shadow-[0_2px_16px_-6px_rgba(46,26,18,0.35)]">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <span className="logo-anim"><img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-10 w-auto object-contain" /></span>
@@ -347,6 +364,9 @@ export default function App() {
             ))}
           </nav>
           <div className="flex items-center gap-2 shrink-0 text-xs text-slate-500">
+            <Button variant="ghost" size="sm" title={`Theme: ${theme} (click to change)`} onClick={cycleTheme}>
+              {theme === 'light' ? <Sun size={14} /> : theme === 'dark' ? <Moon size={14} /> : <Monitor size={14} />}
+            </Button>
             {cloud === 'ready'
               ? <span className="inline-flex items-center gap-1 text-emerald-600"><Cloud size={13} /> Saved</span>
               : cloud === 'saving'

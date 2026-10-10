@@ -18,23 +18,23 @@
     --radius: 0.625rem;
   }
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 47% 11%;
-    --card-foreground: 210 40% 98%;
-    --primary: 17 45% 62%;
-    --primary-foreground: 0 0% 100%;
-    --accent: 17 55% 65%;
-    --accent-foreground: 0 0% 100%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --border: 217.2 32.6% 25%;
+    --background: 16 40% 7%;
+    --foreground: 30 40% 93%;
+    --card: 16 42% 12%;
+    --card-foreground: 30 40% 93%;
+    --primary: 17 55% 62%;
+    --primary-foreground: 16 40% 10%;
+    --accent: 22 60% 58%;
+    --accent-foreground: 16 40% 10%;
+    --muted: 16 35% 18%;
+    --muted-foreground: 28 25% 65%;
+    --border: 17 35% 26%;
   }
   * {
     @apply border-border;
   }
   body {
-    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+    @apply bg-slate-50 text-slate-900 dark:bg-[#160C07] dark:text-[#F9EFE6];
     font-family: 'IBM Plex Sans', system-ui, sans-serif;
   }
   .num {
