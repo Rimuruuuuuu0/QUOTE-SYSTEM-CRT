@@ -264,6 +264,15 @@ export default function App() {
   const t = totals(q)
   const accepted = quotes.filter((x) => x.status === 'Accepted')
   const acceptedVal = accepted.reduce((s, x) => s + totals(x).total, 0)
+  const pendingCount = quotes.filter((x) => ['Draft', 'Sent'].includes(x.status)).length
+  const lowCount = products.filter((p) => p.stock <= 2).length
+  const monthKey = new Date().toISOString().slice(0, 7)
+  const monthQ = accepted.filter((x) => (x.date || '').startsWith(monthKey))
+  const monthVal = monthQ.reduce((s, x) => s + totals(x).total, 0)
+  const monthProfit = monthQ.reduce((s, x) => s + totals(x).profit, 0)
+  const todayIso = new Date().toISOString().slice(0, 10)
+  const followUps = quotes.filter((x) => x.status === 'Sent' && x.valid && x.valid < todayIso).slice(0, 5)
+  const lowTop = [...products].filter((p) => p.stock <= 2).sort((a, b) => a.stock - b.stock).slice(0, 5)
 
   const saveProduct = () => {
     if (!pf || !pf.name.trim()) { alert('Enter a product name.'); return }
@@ -296,12 +305,36 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#8fa1ff] via-[#e8ebff] to-[#ff9d9d] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="flex h-2"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
+      <div className="flex items-start">
+        <aside className="hidden lg:flex sticky top-0 h-screen w-[72px] shrink-0 flex-col items-center gap-1.5 py-4 bg-white/45 backdrop-blur-[12px] border-r border-white/50 z-30">
+          <img src="/logo.png" alt="CRT" className="h-9 w-9 rounded-lg object-contain bg-white shadow mb-2" title="ChrisRandomTech" />
+          {TABS.map((tb) => {
+            const active = tab === tb.id
+            const badge = tb.id === 'quotes' ? pendingCount : tb.id === 'products' ? lowCount : 0
+            return (
+              <button
+                key={tb.id}
+                title={tb.label + (badge ? ` (${badge})` : '')}
+                onClick={() => { setTab(tb.id); window.scrollTo(0, 0) }}
+                className={`relative grid place-items-center h-11 w-11 rounded-xl transition-colors ${active ? 'bg-brand-blue text-white shadow-[0_4px_14px_-4px_rgba(64,80,252,0.7)]' : 'text-slate-600 hover:bg-white/70'}`}
+              >
+                {tb.icon}
+                {!!badge && <span className={`absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold grid place-items-center text-white ${tb.id === 'products' ? 'bg-brand-red' : 'bg-amber-500'}`}>{badge}</span>}
+              </button>
+            )
+          })}
+          <div className="mt-auto flex flex-col items-center gap-1.5 pb-1">
+            <span className={`h-2.5 w-2.5 rounded-full ${cloud === 'ready' ? 'bg-emerald-500' : cloud === 'saving' ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'}`} title={cloud === 'ready' ? 'Saved to cloud' : cloud} />
+            <span className="num text-[10px] font-semibold text-brand-bluedark" title="Accepted this month">{monthVal >= 1000 ? `₱${Math.round(monthVal / 1000)}k` : money(monthVal)}</span>
+          </div>
+        </aside>
+        <div className="flex-1 min-w-0">
       <header className="sticky top-0 z-20 border-b border-white/40 bg-white/55 dark:bg-slate-900/60 backdrop-blur-[12px] shadow-[0_2px_16px_-6px_rgba(64,80,252,0.35)]">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-10 w-auto object-contain" />
           </div>
-          <nav className="flex gap-1 text-sm overflow-x-auto flex-1">
+          <nav className="flex gap-1 text-sm overflow-x-auto flex-1 lg:hidden">
             {TABS.map((tb) => (
               <Button
                 key={tb.id}
@@ -340,6 +373,28 @@ export default function App() {
               ].map((s) => (
                 <Card key={s.label} className="overflow-hidden border-t-4" style={{ borderTopColor: s.bar === 'bg-brand-blue' ? '#4050FC' : s.bar === 'bg-brand-red' ? '#F50B0B' : s.bar === 'bg-emerald-500' ? '#10b981' : '#f59e0b' }}><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className={`num text-xl mt-1 font-semibold ${s.text}`}>{s.value}</div></CardContent></Card>
               ))}
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#f59e0b' }}>
+                <CardHeader>Follow up <span className="text-xs font-normal text-slate-500">expired Sent quotes</span></CardHeader>
+                {followUps.map((r) => (
+                  <button key={r.id} onClick={() => setView(r)} className="w-full flex justify-between px-4 py-2.5 text-left text-sm hover:bg-amber-50 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
+                    <span><span className="num">{r.no}</span><span className="ml-2">{r.customer?.name || 'No name'}</span></span>
+                    <span className="text-amber-600 text-xs">expired {r.valid}</span>
+                  </button>
+                ))}
+                {!followUps.length && <p className="px-4 py-6 text-center text-sm text-slate-500">Nothing overdue. Every Sent quote is still valid.</p>}
+              </Card>
+              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#F50B0B' }}>
+                <CardHeader>Restock radar <span className="text-xs font-normal text-slate-500">≤2 left</span></CardHeader>
+                {lowTop.map((p) => (
+                  <button key={p.id} onClick={() => { setTab('products'); setPsearch(p.name) }} className="w-full flex justify-between px-4 py-2.5 text-left text-sm hover:bg-red-50 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
+                    <span>{p.name}{p.variant ? ` (${p.variant})` : ''}</span>
+                    <span className="num text-brand-red font-semibold">{p.stock} left</span>
+                  </button>
+                ))}
+                {!lowTop.length && <p className="px-4 py-6 text-center text-sm text-slate-500">Shelves healthy — nothing at reorder level.</p>}
+              </Card>
             </div>
             <Card>
               <CardHeader>Recent quotes</CardHeader>
@@ -418,6 +473,25 @@ export default function App() {
             </div>
 
             <aside className="space-y-4 lg:sticky lg:top-20 self-start">
+              {(() => {
+                const cust = q.customer.name.trim().toLowerCase()
+                const hist = cust ? quotes.filter((x) => (x.customer?.name || '').toLowerCase() === cust) : []
+                const histTotal = hist.reduce((s, x) => s + totals(x).total, 0)
+                const alerts: string[] = []
+                q.items.forEach((it) => {
+                  const p = products.find((x) => x.id === it.pid)
+                  if (p && p.stock < it.qty) alerts.push(`${it.name}: only ${p.stock} in stock for qty ${it.qty}`)
+                  if (it.cost > 0 && it.price < it.cost) alerts.push(`${it.name}: selling below cost`)
+                })
+                if (!hist.length && !alerts.length) return null
+                return (
+                  <Card className="border-t-4" style={{ borderTopColor: '#4050FC' }}><CardContent className="space-y-2 text-sm">
+                    <CardTitle className="text-sm uppercase tracking-wide text-slate-500">Clerk notes</CardTitle>
+                    {!!hist.length && <div>Repeat buyer — <b>{hist.length}</b> past quote(s), <span className="num">{money(histTotal)}</span> lifetime. Last: {hist[0].no} ({hist[0].status}).</div>}
+                    {alerts.map((a, i) => <div key={i} className="text-amber-700">⚠ {a}</div>)}
+                  </CardContent></Card>
+                )
+              })()}
               <Card><CardContent className="space-y-3">
                 <CardTitle>Summary</CardTitle>
                 <div className="flex justify-between text-sm"><span>Subtotal</span><span className="num">{money(t.sub)}</span></div>
@@ -653,6 +727,8 @@ export default function App() {
           </section>
         )}
       </main>
+        </div>
+      </div>
 
       <Dialog open={!!pf} onOpenChange={(o) => !o && setPf(null)}>
         <DialogContent>
