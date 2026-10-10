@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
-import { LogOut, Cloud, CloudOff, Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload } from 'lucide-react'
+import { LogOut, Cloud, CloudOff, Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input, Textarea, Select } from '@/components/ui/input'
@@ -13,7 +13,7 @@ import { money, photoOf, uid } from '@/lib/utils'
 import { totals, srp, type Product, type Quote, type QuoteItem, type QuoteStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-type Tab = 'dash' | 'new' | 'quotes' | 'products' | 'settings'
+type Tab = 'dash' | 'new' | 'quotes' | 'products' | 'ai' | 'settings'
 
 export class CrashBox extends React.Component<{ children: React.ReactNode }, { err: Error | null }> {
   state = { err: null as Error | null }
@@ -42,9 +42,11 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'new', label: 'New quote', icon: <Plus size={15} /> },
   { id: 'quotes', label: 'Quotes', icon: <FileText size={15} /> },
   { id: 'products', label: 'Products', icon: <Package size={15} /> },
+  { id: 'ai', label: 'Assistant', icon: <Bot size={15} /> },
   { id: 'settings', label: 'Settings', icon: <SettingsIcon size={15} /> },
 ]
 
+import { assistQuery, type Pick as APick } from '@/lib/assistant'
 import { CATS } from '@/lib/categories'
 
 export default function App() {
@@ -65,6 +67,38 @@ export default function App() {
   const [loginErr, setLoginErr] = useState('')
   const [cloud, setCloud] = useState<'loading' | 'ready' | 'saving'>('loading')
   const savedRef = useRef('')
+  const [amsgs, setAmsgs] = useState<{ role: 'u' | 'a'; text: string }[]>([])
+  const [ainput, setAinput] = useState('')
+  const [apicks, setApicks] = useState<APick[]>([])
+  const [awarns, setAwarns] = useState<string[]>([])
+
+  const ask = (text: string) => {
+    const query = text.trim()
+    if (!query) return
+    const r = assistQuery(query, products, quotes, settings.markup || 20)
+    setAmsgs((m) => [...m, { role: 'u', text: query }, { role: 'a', text: r.reply }])
+    setApicks(r.picks)
+    setAwarns(r.warnings)
+    setAinput('')
+  }
+
+  const applyPicks = () => {
+    if (!apicks.length) return
+    setQ((prev) => {
+      const items = [...prev.items]
+      for (const pk of apicks) {
+        const ex = items.find((i) => i.pid === pk.product.id)
+        if (ex) ex.qty += pk.qty
+        else {
+          const cost = pk.product.cost || 0
+          const margin = settings.markup || 20
+          items.push({ key: uid(), pid: pk.product.id, name: pk.product.name, variant: pk.product.variant || '', imageUrl: photoOf(pk.product), qty: pk.qty, cost, margin, price: cost ? srp(cost, margin) : pk.product.price })
+        }
+      }
+      return { ...prev, items }
+    })
+    setTab('new')
+  }
 
   useEffect(() => onAuthStateChanged(auth, (u) => { setUser(u); setAuthReady(true) }), [])
 
@@ -496,6 +530,47 @@ export default function App() {
                 )}
               </div>
             </Card>
+          </section>
+        )}
+
+        {tab === 'ai' && (
+          <section className="max-w-2xl space-y-4">
+            <h1 className="text-2xl font-semibold">Assistant <span className="text-sm font-normal text-slate-500">free · offline · uses your catalog</span></h1>
+            <Card><CardContent className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {['8GB DDR4 under ₱2000', 'Gaming build under 50k', 'What needs reorder?', 'Ryzen B550 combo'].map((s) => (
+                  <Button key={s} variant="outline" size="sm" onClick={() => ask(s)}>{s}</Button>
+                ))}
+              </div>
+              <div className="space-y-2 max-h-72 overflow-auto">
+                {!amsgs.length && <p className="text-sm text-slate-500">Ask for items, budgets, compatibility, reorders, or repeat customers — e.g. "same as last time for Jenigg".</p>}
+                {amsgs.map((m, i) => (
+                  <div key={i} className={m.role === 'u' ? 'text-right' : 'text-left'}>
+                    <span className={m.role === 'u' ? 'inline-block bg-brand-blue text-white rounded-lg px-3 py-2 text-sm' : 'inline-block bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-2 text-sm'}>{m.text}</span>
+                  </div>
+                ))}
+              </div>
+              {!!awarns.length && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950 p-3 text-sm space-y-1">
+                  {awarns.map((w, i) => <div key={i}>⚠ {w}</div>)}
+                </div>
+              )}
+              {!!apicks.length && (
+                <div className="rounded-lg border p-3 text-sm space-y-1">
+                  {apicks.map((k, i) => (
+                    <div key={i} className="flex justify-between gap-2">
+                      <span>{k.product.name}{k.product.variant ? ` (${k.product.variant})` : ''} × {k.qty}{k.reason ? <span className="text-slate-500"> · {k.reason}</span> : null}</span>
+                      <span className="num">{money(k.product.price * k.qty)}</span>
+                    </div>
+                  ))}
+                  <Button className="w-full mt-2" onClick={applyPicks}><Plus size={15} /> Add all to quote</Button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Input placeholder="Ask — items, budget, compatibility…" value={ainput} onChange={(e) => setAinput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ask(ainput)} />
+                <Button onClick={() => ask(ainput)}>Ask</Button>
+              </div>
+            </CardContent></Card>
           </section>
         )}
 
