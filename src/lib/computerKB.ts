@@ -74,6 +74,10 @@ const T: KBTopic[] = [
     answer: 'Compatibility in one line: CPU socket must match board (Ryzen↔AMD board, Intel↔Intel board), RAM gen must match board (DDR4 board = DDR4 only), GPU needs PSU headroom, case must fit board size (ATX board needs ATX case). Tell me the exact parts and I will check them against your catalog.',
   },
   {
+    keys: ['am5 equivalent', 'equivalent for am5', 'equivalent of am5', 'intel equivalent', 'amd equivalent', 'lga1700 equivalent', 'am5 vs lga', 'b650 equivalent', 'like b650 but intel'],
+    answer: 'AM5 (AMD Ryzen 7000/8000/9000) vs Intel LGA1700 (12th–14th gen) equivalents: A620 ≈ H610 (budget), B650 ≈ B760 (mainstream sweet spot), X670 ≈ Z790 (high-end, overclocking). They are NOT interchangeable — an AM5 CPU only fits AM5 boards, Intel only fits Intel boards. Tell me the exact CPU and I will match a board from your catalog.',
+  },
+  {
     keys: ['warranty', 'guarantee', 'return'],
     answer: 'Warranty follows manufacturer terms per part (usually 1 year shop warranty assistance + distributor/manufacturer warranty). Keep your quotation/invoice — it is your proof of purchase. Prices in quotations are subject to change without notice.',
   },
