@@ -7,7 +7,7 @@ import { Input, Textarea, Select } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { importLoyverseCsv } from '@/lib/loyverse'
-import { auth, loadCloud, saveCloud } from '@/lib/firebase'
+import { auth, ensureShared, saveShared, subscribeShared } from '@/lib/firebase'
 import { useStore, blankQuote, newQuoteNo } from '@/lib/store'
 import { money, photoOf, uid } from '@/lib/utils'
 import { totals, srp, type Product, type Quote, type QuoteItem, type QuoteStatus } from '@/lib/types'
@@ -168,27 +168,35 @@ export default function App() {
 
   useEffect(() => onAuthStateChanged(auth, (u) => { setUser(u); setAuthReady(true) }), [])
 
-  // Load cloud data on sign in (cloud wins; local stays as offline backup)
+  // Shared store: every account loads the SAME products/quotes, then stays
+  // live — a sale on one account updates all accounts within seconds.
   useEffect(() => {
     if (!user) return
     setCloud('loading')
-    loadCloud(user.uid)
+    let unsub: (() => void) | null = null
+    ensureShared(user.uid, { products, quotes, settings })
       .then((d) => {
-        if (d) {
-          setProducts(d.products)
-          setQuotes(d.quotes)
-          setSettings((s) => ({ ...s, ...d.settings }))
-          savedRef.current = JSON.stringify(d)
-        } else {
-          savedRef.current = ''
-        }
+        setProducts(d.products)
+        setQuotes(d.quotes)
+        setSettings((s) => ({ ...s, ...d.settings }))
+        savedRef.current = JSON.stringify(d)
+        unsub = subscribeShared((live) => {
+          if (!live) return
+          const snap = JSON.stringify(live)
+          if (snap === savedRef.current) return // own echo
+          setProducts(live.products)
+          setQuotes(live.quotes)
+          setSettings((s) => ({ ...s, ...live.settings }))
+          savedRef.current = snap
+        })
       })
       .catch(() => {})
       .finally(() => setCloud('ready'))
+    return () => { if (unsub) unsub() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  // Save to cloud (debounced). Only saves when data differs from last save/load.
+  // Save to the shared store (debounced). Only saves when data differs.
   useEffect(() => {
     if (!user || cloud !== 'ready') return
     const data = { products, quotes, settings }
@@ -196,7 +204,7 @@ export default function App() {
     if (snap === savedRef.current) return
     const h = setTimeout(() => {
       setCloud('saving')
-      saveCloud(user.uid, data)
+      saveShared(data)
         .then(() => { savedRef.current = snap })
         .catch(() => {})
         .finally(() => setCloud('ready'))
@@ -256,6 +264,31 @@ export default function App() {
 
   const setCostMargin = (i: number, cost: number, margin: number) =>
     setItem(i, { cost, margin, price: srp(cost, margin) })
+
+  /** A sale on ANY account deducts the SAME shared stocks for ALL accounts. */
+  const adjustStock = (qt: Quote, dir: -1 | 1) =>
+    setProducts((prev) =>
+      prev.map((p) => {
+        const line = qt.items.find((i) => i.pid === p.id)
+        if (!line) return p
+        return { ...p, stock: Math.max(0, p.stock + dir * (line.qty || 0)) }
+      })
+    )
+
+  const changeStatus = (r: Quote, s: QuoteStatus) => {
+    if (s === 'Accepted' && r.status !== 'Accepted') {
+      if (!confirm(`Mark ${r.no} Accepted and deduct stocks (sold)?`)) return
+      adjustStock(r, -1)
+    }
+    if (r.status === 'Accepted' && s !== 'Accepted') adjustStock(r, 1)
+    setQuotes((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: s } : x)))
+  }
+
+  const deleteQuote = (r: Quote) => {
+    if (!confirm(`Delete ${r.no}?`)) return
+    if (r.status === 'Accepted') adjustStock(r, 1)
+    setQuotes((prev) => prev.filter((x) => x.id !== r.id))
+  }
 
   const saveQuote = (show: boolean) => {
     if (!q.items.length) { alert('Add at least one item before saving.'); return }
@@ -582,7 +615,7 @@ export default function App() {
                         <td>{r.customer?.name || '—'}</td>
                         <td>{r.date}</td>
                         <td>
-                          <Select className="!w-32 !py-1" value={r.status} onChange={(e) => { const s = e.target.value as QuoteStatus; setQuotes((prev) => prev.map((x) => x.id === r.id ? { ...x, status: s } : x)) }}>
+                          <Select className="!w-32 !py-1" value={r.status} onChange={(e) => changeStatus(r, e.target.value as QuoteStatus)}>
                             <option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option>
                           </Select>
                         </td>
@@ -595,7 +628,7 @@ export default function App() {
                             a.href = URL.createObjectURL(new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' }))
                             a.download = `${r.no}.json`; a.click()
                           }}><Download size={12} /> Save</Button>
-                          <Button variant="ghost" size="sm" className="text-red-600" onClick={() => { if (confirm(`Delete ${r.no}?`)) setQuotes((prev) => prev.filter((x) => x.id !== r.id)) }}><Trash2 size={12} /></Button>
+                          <Button variant="ghost" size="sm" className="text-red-600" onClick={() => deleteQuote(r)}><Trash2 size={12} /></Button>
                         </td>
                       </tr>
                     ))}
