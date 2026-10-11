@@ -438,7 +438,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#7FA29B] via-[#FBF6EF] to-[#D3928E] dark:from-[#14171B] dark:via-[#2A2F35] dark:to-[#14171B]">
+    <div className="min-h-screen tech-grid bg-gradient-to-br from-[#7FA29B] via-[#FBF6EF] to-[#D3928E] dark:from-[#14171B] dark:via-[#2A2F35] dark:to-[#14171B]">
       <div className="flex h-2"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
       <div className="flex items-start">
         <aside className="hidden lg:flex sticky top-0 h-screen w-[72px] shrink-0 flex-col items-center gap-1.5 py-4 bg-[#FBF6EF]/50 dark:bg-[#2A2F35]/75 backdrop-blur-[12px] border-r border-white/50 dark:border-[#D3928E]/25 z-30">
@@ -451,10 +451,10 @@ export default function App() {
                 key={tb.id}
                 title={tb.label + (badge ? ` (${badge})` : '')}
                 onClick={() => { setTab(tb.id); window.scrollTo(0, 0) }}
-                className={`relative grid place-items-center h-11 w-11 rounded-2xl transition-all hover:scale-105 ${active ? 'bg-gradient-to-br from-[#2A2F35] to-[#A96F6B] text-white shadow-[0_6px_16px_-4px_rgba(42,47,53,0.7)]' : 'text-slate-600 dark:text-[#FBF6EF] hover:bg-white/70 dark:hover:bg-white/10'}`}
+                className={`chamfer-sm relative grid place-items-center h-11 w-11 rounded-2xl transition-all hover:scale-105 ${active ? 'bg-gradient-to-br from-[#2A2F35] to-[#A96F6B] text-white shadow-[0_6px_16px_-4px_rgba(42,47,53,0.7)]' : 'text-slate-600 dark:text-[#FBF6EF] hover:bg-white/70 dark:hover:bg-white/10'}`}
               >
                 {tb.icon}
-                {!!badge && <span className={`absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold grid place-items-center text-[#2A2F35] ${tb.id === 'products' ? 'bg-brand-red' : 'bg-brand-red'}`}>{badge}</span>}
+                {!!badge && <span className={`absolute top-0 right-0 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold grid place-items-center text-[#2A2F35] ${tb.id === 'products' ? 'bg-brand-red' : 'bg-brand-red'}`}>{badge}</span>}
               </button>
             )
           })}
@@ -504,8 +504,11 @@ export default function App() {
         {tab === 'dash' && (
           <section className="space-y-6">
             <div className="flex items-end justify-between flex-wrap gap-3">
-              <h1 className="text-2xl font-semibold">Overview <span className="inline-block h-1.5 w-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-red align-middle ml-1" /></h1>
-              <Button variant="accent" onClick={() => { resetQuote(); setTab('new') }}><Plus size={15} /> New quote</Button>
+              <div>
+                <div className="hud-eyebrow hidden sm:block">SYS.01 // command deck</div>
+                <h1 className="text-2xl font-semibold">Overview <span className="inline-block h-1.5 w-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-red align-middle ml-1" /></h1>
+              </div>
+              <Button variant="accent" className="chamfer-sm glow-cta" onClick={() => { resetQuote(); setTab('new') }}><Plus size={15} /> New quote</Button>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
@@ -514,11 +517,11 @@ export default function App() {
                 { label: 'Accepted value', value: money(cAcc), bar: '#D3928E', text: 'text-[#2A2F35]' },
                 { label: 'Products', value: String(Math.round(cProd)), bar: '#7FA29B', text: 'text-[#2A2F35]' },
               ].map((s) => (
-                <Card key={s.label} className="overflow-hidden border-t-4" style={{ borderTopColor: s.bar }}><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className={`num text-xl mt-1 font-semibold ${s.text}`}>{s.value}</div></CardContent></Card>
+                <Card key={s.label} className="chamfer overflow-hidden border-t-4" style={{ borderTopColor: s.bar }}><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className={`num stat-glow text-xl mt-1 font-semibold ${s.text}`}>{s.value}</div></CardContent></Card>
               ))}
             </div>
             <div className="grid md:grid-cols-2 gap-3">
-              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#D3928E' }}>
+              <Card className="chamfer overflow-hidden border-t-4" style={{ borderTopColor: '#D3928E' }}>
                 <CardHeader>Follow up <span className="text-xs font-normal text-slate-500">expired Sent quotes</span></CardHeader>
                 {followUps.map((r) => (
                   <button key={r.id} onClick={() => setView(r)} className="w-full flex justify-between px-4 py-2.5 text-left text-sm hover:bg-[#D3928E]/15 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
@@ -528,7 +531,7 @@ export default function App() {
                 ))}
                 {!followUps.length && <p className="px-4 py-6 text-center text-sm text-slate-500">Nothing overdue. Every Sent quote is still valid.</p>}
               </Card>
-              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#2A2F35' }}>
+              <Card className="chamfer overflow-hidden border-t-4" style={{ borderTopColor: '#2A2F35' }}>
                 <CardHeader>Restock radar <span className="text-xs font-normal text-slate-500">≤2 left</span></CardHeader>
                 {lowTop.map((p) => (
                   <button key={p.id} onClick={() => { setTab('products'); setPsearch(p.name) }} className="w-full flex justify-between px-4 py-2.5 text-left text-sm hover:bg-red-50 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
@@ -540,7 +543,7 @@ export default function App() {
               </Card>
             </div>
             <div className="grid md:grid-cols-2 gap-3">
-              <Card className="overflow-hidden border-t-4 lift" style={{ borderTopColor: '#7FA29B' }}>
+              <Card className="chamfer overflow-hidden border-t-4 lift" style={{ borderTopColor: '#7FA29B' }}>
                 <CardHeader>Sales pulse <span className="text-xs font-normal text-slate-500">accepted, last 14 days</span></CardHeader>
                 <CardContent>
                   {(() => {
@@ -563,7 +566,7 @@ export default function App() {
                 </CardContent>
               </Card>
               {botd ? (
-                <Card className="overflow-hidden border-t-4 lift" style={{ borderTopColor: '#D3928E' }}>
+                <Card className="chamfer overflow-hidden border-t-4 lift" style={{ borderTopColor: '#D3928E' }}>
                   <CardHeader>Build of the day <span className="text-xs font-normal text-slate-500">compatible trio, in stock</span></CardHeader>
                   <CardContent className="space-y-2">
                     {botd.parts.map((p) => {
@@ -583,13 +586,13 @@ export default function App() {
                   </CardContent>
                 </Card>
               ) : (
-                <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#D3928E' }}>
+                <Card className="chamfer overflow-hidden border-t-4" style={{ borderTopColor: '#D3928E' }}>
                   <CardHeader>Build of the day</CardHeader>
                   <CardContent><p className="text-sm text-slate-500">Add an in-stock CPU, motherboard and RAM to unlock daily combos.</p></CardContent>
                 </Card>
               )}
             </div>
-            <Card>
+            <Card className="chamfer">
               <CardHeader>Recent quotes</CardHeader>
               {quotes.slice(0, 5).map((r) => (
                 <button key={r.id} onClick={() => setView(r)} className="w-full flex justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
