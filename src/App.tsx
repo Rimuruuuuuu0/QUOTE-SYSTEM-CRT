@@ -49,6 +49,26 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 import { assistQuery, type Pick as APick } from '@/lib/assistant'
 import { CATS } from '@/lib/categories'
 
+const useCountUp = (target: number, dur = 700) => {
+  const [v, setV] = useState(target)
+  const prev = useRef(target)
+  useEffect(() => {
+    const from = prev.current
+    if (from === target) return
+    let raf = 0
+    const start = performance.now()
+    const step = (now: number) => {
+      const p = Math.min(1, (now - start) / dur)
+      setV(from + (target - from) * (1 - Math.pow(1 - p, 3)))
+      if (p < 1) raf = requestAnimationFrame(step)
+      else prev.current = target
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [target, dur])
+  return v
+}
+
 export default function App() {
   const { products, setProducts, quotes, setQuotes, settings, setSettings } = useStore()
   const [tab, setTab] = useState<Tab>('dash')
@@ -88,6 +108,12 @@ export default function App() {
   const [ainput, setAinput] = useState('')
   const [apicks, setApicks] = useState<APick[]>([])
   const [awarns, setAwarns] = useState<string[]>([])
+  const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([])
+  const toast = (msg: string) => {
+    const id = Date.now() + Math.random()
+    setToasts((t) => [...t, { id, msg }])
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3800)
+  }
   const [gemKey, setGemKey] = useState(() => { try { return localStorage.getItem('gemini-key') || '' } catch { return '' } })
   const [aiSmart, setAiSmart] = useState(true)
   const [aloading, setAloading] = useState(false)
@@ -279,6 +305,7 @@ export default function App() {
     if (s === 'Accepted' && r.status !== 'Accepted') {
       if (!confirm(`Mark ${r.no} Accepted and deduct stocks (sold)?`)) return
       adjustStock(r, -1)
+      toast(`Sold! Stocks deducted on all accounts for ${r.no}.`)
     }
     if (r.status === 'Accepted' && s !== 'Accepted') adjustStock(r, 1)
     setQuotes((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: s } : x)))
@@ -323,6 +350,34 @@ export default function App() {
   const todayIso = new Date().toISOString().slice(0, 10)
   const followUps = quotes.filter((x) => x.status === 'Sent' && x.valid && x.valid < todayIso).slice(0, 5)
   const lowTop = [...products].filter((p) => p.stock <= 2).sort((a, b) => a.stock - b.stock).slice(0, 5)
+  const cQuotes = useCountUp(quotes.length)
+  const cPend = useCountUp(pendingCount)
+  const cAcc = useCountUp(acceptedVal)
+  const cProd = useCountUp(products.length)
+  const spark = (() => {
+    const vals: number[] = []
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10)
+      vals.push(accepted.filter((x) => x.date === d).reduce((s, x) => s + totals(x).total, 0))
+    }
+    return vals
+  })()
+  const botd = (() => {
+    const cpus = products.filter((p) => p.stock > 0 && /ryzen|athlon|intel|celeron|pentium|\bi[3579]\b/i.test(p.name)).sort((a, b) => a.price - b.price)
+    if (!cpus.length) return null
+    const cpu = cpus[new Date().getDate() % cpus.length]
+    const amd = /ryzen|athlon|am4|am5/i.test(cpu.name)
+    const boards = products.filter((p) => p.category === 'Motherboard' && p.stock > 0 && (amd ? /b550|a520|x570|b650|a620/i.test(p.name) : /b660|h610|b760|z790|h510|b560/i.test(p.name))).sort((a, b) => a.price - b.price)
+    const rams = products.filter((p) => p.category === 'RAM' && p.stock > 0).sort((a, b) => a.price - b.price)
+    if (!boards.length || !rams.length) return null
+    const parts = [cpu, boards[0], rams[0]]
+    return { parts, total: parts.reduce((s, p) => s + p.price, 0) }
+  })()
+  const quoteBuild = () => {
+    if (!botd) return
+    botd.parts.forEach((p) => addItem(p))
+    setTab('new')
+  }
 
   const saveProduct = () => {
     if (!pf || !pf.name.trim()) { alert('Enter a product name.'); return }
@@ -347,7 +402,7 @@ export default function App() {
         if (d.products) setProducts(d.products)
         if (d.quotes) setQuotes(d.quotes)
         if (d.settings) setSettings((s) => ({ ...s, ...d.settings }))
-        alert('Backup imported.')
+        toast('Backup imported.')
       } catch { alert('That file is not a valid backup.') }
     })
   }
@@ -415,6 +470,7 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6">
+        <div key={tab} className="tab-enter">
         {tab === 'dash' && (
           <section className="space-y-6">
             <div className="flex items-end justify-between flex-wrap gap-3">
@@ -423,10 +479,10 @@ export default function App() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
-                { label: 'Total quotes', value: String(quotes.length), bar: '#7FA29B', text: 'text-[#2A2F35]' },
-                { label: 'Pending (Draft + Sent)', value: String(quotes.filter((x) => ['Draft','Sent'].includes(x.status)).length), bar: '#2A2F35', text: 'text-[#2A2F35]' },
-                { label: 'Accepted value', value: money(acceptedVal), bar: '#D3928E', text: 'text-[#2A2F35]' },
-                { label: 'Products', value: String(products.length), bar: '#7FA29B', text: 'text-[#2A2F35]' },
+                { label: 'Total quotes', value: String(Math.round(cQuotes)), bar: '#7FA29B', text: 'text-[#2A2F35]' },
+                { label: 'Pending (Draft + Sent)', value: String(Math.round(cPend)), bar: '#2A2F35', text: 'text-[#2A2F35]' },
+                { label: 'Accepted value', value: money(cAcc), bar: '#D3928E', text: 'text-[#2A2F35]' },
+                { label: 'Products', value: String(Math.round(cProd)), bar: '#7FA29B', text: 'text-[#2A2F35]' },
               ].map((s) => (
                 <Card key={s.label} className="overflow-hidden border-t-4" style={{ borderTopColor: s.bar }}><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className={`num text-xl mt-1 font-semibold ${s.text}`}>{s.value}</div></CardContent></Card>
               ))}
@@ -452,6 +508,56 @@ export default function App() {
                 ))}
                 {!lowTop.length && <p className="px-4 py-6 text-center text-sm text-slate-500">Shelves healthy — nothing at reorder level.</p>}
               </Card>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <Card className="overflow-hidden border-t-4 lift" style={{ borderTopColor: '#7FA29B' }}>
+                <CardHeader>Sales pulse <span className="text-xs font-normal text-slate-500">accepted, last 14 days</span></CardHeader>
+                <CardContent>
+                  {(() => {
+                    const max = Math.max(...spark, 1)
+                    const pts = spark.map((v, i) => `${(i / (spark.length - 1)) * 260},${52 - (v / max) * 46}`).join(' ')
+                    return (
+                      <svg viewBox="0 0 260 56" className="w-full h-14">
+                        <defs>
+                          <linearGradient id="sparkfill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#D3928E" stopOpacity="0.55" />
+                            <stop offset="100%" stopColor="#D3928E" stopOpacity="0.05" />
+                          </linearGradient>
+                        </defs>
+                        <polygon points={`0,56 ${pts} 260,56`} fill="url(#sparkfill)" />
+                        <polyline points={pts} fill="none" stroke="#2A2F35" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )
+                  })()}
+                  <div className="flex justify-between text-xs text-slate-500 mt-1"><span>14 days ago</span><span className="num font-semibold text-[#2A2F35]">{money(spark.reduce((s, v) => s + v, 0))} total</span><span>today</span></div>
+                </CardContent>
+              </Card>
+              {botd ? (
+                <Card className="overflow-hidden border-t-4 lift" style={{ borderTopColor: '#D3928E' }}>
+                  <CardHeader>Build of the day <span className="text-xs font-normal text-slate-500">compatible trio, in stock</span></CardHeader>
+                  <CardContent className="space-y-2">
+                    {botd.parts.map((p) => {
+                      const src = photoOf(p)
+                      return (
+                        <div key={p.id} className="flex items-center gap-2 text-sm">
+                          {src ? <img src={src} alt="" className="h-9 w-9 rounded object-cover border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} /> : null}
+                          <span className="flex-1">{p.name}{p.variant ? ` (${p.variant})` : ''}</span>
+                          <span className="num">{money(p.price)}</span>
+                        </div>
+                      )
+                    })}
+                    <div className="flex justify-between items-center pt-1">
+                      <span className="num font-semibold">{money(botd.total)}</span>
+                      <Button size="sm" variant="accent" onClick={quoteBuild}><Plus size={14} /> Quote this build</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#D3928E' }}>
+                  <CardHeader>Build of the day</CardHeader>
+                  <CardContent><p className="text-sm text-slate-500">Add an in-stock CPU, motherboard and RAM to unlock daily combos.</p></CardContent>
+                </Card>
+              )}
             </div>
             <Card>
               <CardHeader>Recent quotes</CardHeader>
@@ -591,7 +697,7 @@ export default function App() {
                       const d = JSON.parse(txt)
                       const list = Array.isArray(d) ? d : d.quotes || [d]
                       const fixed = list.map((r: Quote) => ({ ...r, id: r.id || uid() }))
-                      setQuotes((prev) => [...fixed, ...prev]); alert(`Loaded ${fixed.length} quotation(s).`)
+                      setQuotes((prev) => [...fixed, ...prev]); toast(`Loaded ${fixed.length} quotation(s).`)
                     } catch { alert('Not a valid quotation file.') }
                   }); e.target.value = ''
                 }} />
@@ -658,7 +764,7 @@ export default function App() {
                     try {
                       const r = importLoyverseCsv(txt, products)
                       setProducts([...r.products])
-                      alert(`Loyverse import done. Added ${r.added}, updated ${r.updated}, skipped ${r.skipped}.`)
+                      toast(`Loyverse import done. Added ${r.added}, updated ${r.updated}, skipped ${r.skipped}.`)
                     } catch (x: unknown) { alert(x instanceof Error ? x.message : 'Could not read that CSV.') }
                   }); e.target.value = ''
                 }} />
@@ -783,10 +889,16 @@ export default function App() {
             </div>
           </section>
         )}
+        </div>
       </main>
         </div>
       </div>
 
+      <div className="fixed bottom-4 right-4 z-50 space-y-2 max-w-xs">
+        {toasts.map((tst) => (
+          <div key={tst.id} className="toast-in rounded-lg bg-[#2A2F35] text-[#FBF6EF] text-sm px-4 py-2.5 shadow-lg">{tst.msg}</div>
+        ))}
+      </div>
       <Dialog open={!!pf} onOpenChange={(o) => !o && setPf(null)}>
         <DialogContent>
           <DialogTitle>{pf?.id ? 'Edit product' : 'Add product'}</DialogTitle>
