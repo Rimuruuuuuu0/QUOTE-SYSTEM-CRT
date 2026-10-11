@@ -49,6 +49,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 import { assistQuery, type Pick as APick } from '@/lib/assistant'
 import { needsVariant } from '@/lib/variants'
 import LoginFX from '@/components/LoginFX'
+import RigShowcase from '@/components/RigShowcase'
 import { CATS } from '@/lib/categories'
 
 const useCountUp = (target: number, dur = 700) => {
@@ -583,7 +584,7 @@ export default function App() {
                 {!lowTop.length && <p className="px-4 py-6 text-center text-sm text-slate-500">Shelves healthy — nothing at reorder level.</p>}
               </Card>
             </div>
-            <div className="grid md:grid-cols-2 gap-3">
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
               <Card className="chamfer overflow-hidden border-t-4 lift" style={{ borderTopColor: '#A9CBEF' }}>
                 <CardHeader>Sales pulse <span className="text-xs font-normal text-slate-500">accepted, last 14 days</span></CardHeader>
                 <CardContent>
@@ -632,6 +633,12 @@ export default function App() {
                   <CardContent><p className="text-sm text-slate-500">Add an in-stock CPU, motherboard and RAM to unlock daily combos.</p></CardContent>
                 </Card>
               )}
+              <Card className="chamfer overflow-hidden border-t-4 lift md:col-span-2 xl:col-span-1" style={{ borderTopColor: '#17263F' }}>
+                <CardHeader>Rig showcase <span className="text-xs font-normal text-slate-500">hover to orbit · click dims RGB</span></CardHeader>
+                <CardContent>
+                  <RigShowcase />
+                </CardContent>
+              </Card>
             </div>
             <Card className="chamfer">
               <CardHeader>Recent quotes</CardHeader>
