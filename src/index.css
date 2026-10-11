@@ -48,6 +48,7 @@
   display: inline-block;
   overflow: hidden;
   border-radius: 0.375rem;
+}
 .logo-anim img {
   display: block;
   animation: logo-float 5s ease-in-out infinite;
