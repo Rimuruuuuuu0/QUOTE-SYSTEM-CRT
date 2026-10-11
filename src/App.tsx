@@ -366,7 +366,7 @@ export default function App() {
                 key={tb.id}
                 title={tb.label + (badge ? ` (${badge})` : '')}
                 onClick={() => { setTab(tb.id); window.scrollTo(0, 0) }}
-                className={`relative grid place-items-center h-11 w-11 rounded-xl transition-colors ${active ? 'bg-brand-blue text-white shadow-[0_4px_14px_-4px_rgba(42,47,53,0.7)]' : 'text-slate-600 dark:text-[#FBF6EF] hover:bg-white/70 dark:hover:bg-white/10'}`}
+                className={`relative grid place-items-center h-11 w-11 rounded-2xl transition-all hover:scale-105 ${active ? 'bg-gradient-to-br from-[#2A2F35] to-[#A96F6B] text-white shadow-[0_6px_16px_-4px_rgba(42,47,53,0.7)]' : 'text-slate-600 dark:text-[#FBF6EF] hover:bg-white/70 dark:hover:bg-white/10'}`}
               >
                 {tb.icon}
                 {!!badge && <span className={`absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold grid place-items-center text-[#2A2F35] ${tb.id === 'products' ? 'bg-brand-red' : 'bg-brand-red'}`}>{badge}</span>}
@@ -384,19 +384,23 @@ export default function App() {
           <div className="flex items-center gap-2 shrink-0">
             <span className="logo-anim"><img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-10 w-auto object-contain" /></span>
           </div>
-          <nav className="flex gap-1 text-sm overflow-x-auto flex-1 lg:hidden">
+          <nav className="flex gap-1.5 text-sm overflow-x-auto flex-1 lg:hidden py-1">
             {TABS.map((tb) => (
               <Button
                 key={tb.id}
                 variant={tab === tb.id ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => { setTab(tb.id); window.scrollTo(0, 0) }}
+                className={tab === tb.id ? '!rounded-full !bg-gradient-to-r !from-[#2A2F35] !to-[#A96F6B] shadow-[0_4px_14px_-4px_rgba(42,47,53,0.6)]' : '!rounded-full'}
               >
                 {tb.icon}{tb.label}
               </Button>
             ))}
           </nav>
-          <div className="flex items-center gap-2 shrink-0 text-xs text-slate-500">
+          <button onClick={() => { setTab('quotes'); window.scrollTo(0, 0) }} title="Pending quotes" className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-[#D3928E]/20 border border-[#D3928E]/40 px-3 py-1 text-xs font-medium text-[#2A2F35] dark:text-[#FBF6EF] hover:bg-[#D3928E]/30">
+            {new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} · {pendingCount} pending
+          </button>
+          <div className="flex items-center gap-1 shrink-0 text-xs text-slate-500 rounded-full bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/10 px-1.5 py-0.5">
             <Button variant="ghost" size="sm" title={`Theme: ${theme} (click to change)`} onClick={cycleTheme}>
               {theme === 'light' ? <Sun size={14} /> : theme === 'dark' ? <Moon size={14} /> : <Monitor size={14} />}
             </Button>
