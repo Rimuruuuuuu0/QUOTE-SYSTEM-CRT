@@ -1,5 +1,6 @@
 import type { Product } from './types'
 import { normalizeCategory } from './categories'
+import { autoVariant, needsVariant } from './variants'
 import { uid } from './utils'
 
 function splitRow(line: string): string[] {
@@ -99,6 +100,8 @@ export function importLoyverseCsv(text: string, existing: Product[]): LoyverseRe
     if (!name) { skipped++; continue }
     const sku = iSku >= 0 ? (cells[iSku] || '').trim() : ''
     const category = normalizeCategory(name, ((iCat >= 0 ? cells[iCat] || '' : '').trim() || parentCat || 'Other'))
+    if (!needsVariant(category)) variant = ''
+    else if (!variant) variant = autoVariant(name)
     const price = iPrice >= 0 ? num(cells[iPrice]) : 0
     const cost = iCost >= 0 ? num(cells[iCost]) : 0
     const stock = iStock >= 0 ? Math.round(num(cells[iStock])) : 0

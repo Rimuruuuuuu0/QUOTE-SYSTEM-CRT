@@ -47,6 +47,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ]
 
 import { assistQuery, type Pick as APick } from '@/lib/assistant'
+import { needsVariant } from '@/lib/variants'
 import { CATS } from '@/lib/categories'
 
 const useCountUp = (target: number, dur = 700) => {
@@ -612,7 +613,12 @@ export default function App() {
                           {src ? <img src={src} alt="" className="h-12 w-12 rounded-lg object-cover border shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} /> : null}
                           <div className="flex-1 min-w-0 space-y-2">
                             <Input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} />
-                            <Input placeholder="Variant — e.g. 8GB, White, 3200MHz" value={it.variant || ''} onChange={(e) => setItem(i, { variant: e.target.value })} />
+                            {(() => {
+                              const pc = it.pid ? products.find((p) => p.id === it.pid)?.category : ''
+                              return (it.pid == null || needsVariant(pc)) ? (
+                                <Input placeholder="Variant — e.g. 8GB, White, 3200MHz" value={it.variant || ''} onChange={(e) => setItem(i, { variant: e.target.value })} />
+                              ) : null
+                            })()}
                           </div>
                           <button className="text-slate-400 hover:text-red-600 px-1 shrink-0" title="Remove line" onClick={() => setQ({ ...q, items: q.items.filter((_, xi) => xi !== i) })}><X size={16} /></button>
                         </div>
@@ -910,7 +916,7 @@ export default function App() {
           {pf && (
             <div className="space-y-3">
               <Input placeholder="Product name" value={pf.name} onChange={(e) => setPf({ ...pf, name: e.target.value })} />
-              <Input placeholder="Variant (e.g. 8GB, White, 3200MHz)" value={(pf as Product).variant || ''} onChange={(e) => setPf({ ...pf, variant: e.target.value })} />
+              {needsVariant(pf.category) && <Input placeholder="Variant (e.g. 8GB, White, 3200MHz)" value={(pf as Product).variant || ''} onChange={(e) => setPf({ ...pf, variant: e.target.value })} />}
               <label className="block text-sm">Photo URL<Input placeholder="https://…" className="mt-1" value={(pf as Product).imageUrl || ''} onChange={(e) => setPf({ ...pf, imageUrl: e.target.value })} /></label>
               <label className="inline-flex items-center rounded-md border px-4 py-2 text-sm cursor-pointer">Upload photo<input type="file" accept="image/*" className="hidden" onChange={(e) => {
                 const f = e.target.files?.[0]; if (!f) return

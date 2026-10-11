@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Product, Quote, QuoteItem, Settings } from './types'
 import { normalizeCategory } from './categories'
+import { autoVariant, needsVariant } from './variants'
 import { iso } from './utils'
 
 const KEY = 'quotation-system-v1'
@@ -63,12 +64,13 @@ function load() {
             name = s.name
             variant = s.variant
           }
+          const category = normalizeCategory(name, CAT_FIX[p.category] || p.category)
           return {
             ...p,
             name,
-            variant,
+            variant: !needsVariant(category) ? '' : variant || autoVariant(name),
             imageUrl: p.imageUrl || '',
-            category: normalizeCategory(name, CAT_FIX[p.category] || p.category),
+            category,
           }
         })
       const quotes = ((Array.isArray(d.quotes) ? d.quotes : []) as Quote[])
