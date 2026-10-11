@@ -603,28 +603,32 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                <div className="mt-4 overflow-x-auto">
-                  <table className="w-full text-sm min-w-[760px]">
-                    <thead className="text-left text-slate-500"><tr><th className="py-2 font-medium w-12">Photo</th><th className="py-2 font-medium">Item</th><th className="font-medium w-32">Variant</th><th className="font-medium w-16">Qty</th><th className="font-medium w-28">Cost (supplier)</th><th className="font-medium w-20">+ %</th><th className="font-medium w-28">SRP</th><th className="font-medium w-28 text-right">Amount</th><th className="w-8" /></tr></thead>
-                    <tbody>
-                      {q.items.map((it, i) => (
-                        <tr key={it.key} className="border-t border-slate-100 dark:border-slate-800">
-                          <td className="py-2 pr-2">{(() => {
-                            const src = it.imageUrl || photoOf(products.find((p) => p.id === it.pid) || { imageUrl: '', sku: '' })
-                            return src ? <img src={src} alt="" className="h-10 w-10 rounded object-cover border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} /> : <span className="text-slate-300 text-xs">—</span>
-                          })()}</td>
-                          <td className="py-2 pr-2"><Input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} /></td>
-                          <td className="pr-2"><Input placeholder="e.g. 8GB" value={it.variant || ''} onChange={(e) => setItem(i, { variant: e.target.value })} /></td>
-                          <td className="pr-2"><Input type="number" min={1} className="num" value={it.qty} onChange={(e) => setItem(i, { qty: Number(e.target.value) })} /></td>
-                          <td className="pr-2"><Input type="number" min={0} className="num" value={it.cost || 0} onChange={(e) => setCostMargin(i, Number(e.target.value), it.margin ?? settings.markup ?? 20)} /></td>
-                          <td className="pr-2"><Input type="number" min={0} className="num" value={it.margin ?? settings.markup ?? 20} onChange={(e) => setCostMargin(i, it.cost || 0, Number(e.target.value))} /></td>
-                          <td className="pr-2"><Input type="number" min={0} className="num font-medium" value={it.price} onChange={(e) => setItem(i, { price: Number(e.target.value) })} /></td>
-                          <td className="num text-right">{money(it.qty * it.price)}</td>
-                          <td><button className="text-slate-400 hover:text-red-600 px-2" onClick={() => setQ({ ...q, items: q.items.filter((_, xi) => xi !== i) })}><X size={14} /></button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mt-4 space-y-3">
+                  {q.items.map((it, i) => {
+                    const src = it.imageUrl || photoOf(products.find((p) => p.id === it.pid) || { imageUrl: '', sku: '' })
+                    return (
+                      <div key={it.key} className="rounded-xl border border-white/60 dark:border-white/10 bg-white/60 dark:bg-white/5 p-3 space-y-2.5">
+                        <div className="flex items-start gap-2.5">
+                          {src ? <img src={src} alt="" className="h-12 w-12 rounded-lg object-cover border shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} /> : null}
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <Input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} />
+                            <Input placeholder="Variant — e.g. 8GB, White, 3200MHz" value={it.variant || ''} onChange={(e) => setItem(i, { variant: e.target.value })} />
+                          </div>
+                          <button className="text-slate-400 hover:text-red-600 px-1 shrink-0" title="Remove line" onClick={() => setQ({ ...q, items: q.items.filter((_, xi) => xi !== i) })}><X size={16} /></button>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          <label className="text-xs text-slate-500">Qty<Input type="number" min={1} className="num mt-0.5" value={it.qty} onChange={(e) => setItem(i, { qty: Number(e.target.value) })} /></label>
+                          <label className="text-xs text-slate-500">Cost (supplier)<Input type="number" min={0} className="num mt-0.5" value={it.cost || 0} onChange={(e) => setCostMargin(i, Number(e.target.value), it.margin ?? settings.markup ?? 20)} /></label>
+                          <label className="text-xs text-slate-500">+ %<Input type="number" min={0} className="num mt-0.5" value={it.margin ?? settings.markup ?? 20} onChange={(e) => setCostMargin(i, it.cost || 0, Number(e.target.value))} /></label>
+                          <label className="text-xs text-slate-500">SRP<Input type="number" min={0} className="num font-medium mt-0.5" value={it.price} onChange={(e) => setItem(i, { price: Number(e.target.value) })} /></label>
+                        </div>
+                        <div className="flex justify-end items-baseline gap-2">
+                          <span className="text-xs text-slate-500">Amount</span>
+                          <span className="num text-lg font-bold text-[#2A2F35] dark:text-[#FBF6EF]">{money(it.qty * it.price)}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
                   {!q.items.length && <p className="py-8 text-center text-slate-500">No items yet. Search above to add products.</p>}
                   {!!q.items.length && <p className="py-2 text-xs text-slate-400">SRP auto-computes from Cost + %. You can still type an SRP manually.</p>}
                 </div>
