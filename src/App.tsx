@@ -80,6 +80,7 @@ export default function App() {
   const [catFilter, setCatFilter] = useState<string>('All')
   const [filter, setFilter] = useState<'all' | QuoteStatus>('all')
   const [view, setView] = useState<Quote | null>(null)
+  const [saving, setSaving] = useState(false)
   const [pf, setPf] = useState<(Omit<Product, 'id'> & { id?: number | string }) | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [authReady, setAuthReady] = useState(false)
@@ -950,6 +951,25 @@ export default function App() {
           <div className="max-w-3xl mx-auto">
             <div className="flex justify-end gap-2 mb-3">
               <Button onClick={() => window.print()}><Printer size={15} /> Print / PDF</Button>
+              <Button variant="secondary" disabled={saving} onClick={async () => {
+                if (!view) return
+                setSaving(true)
+                try {
+                  const { default: html2canvas } = await import('html2canvas')
+                  const el = document.getElementById('print')
+                  if (!el) throw new Error('missing')
+                  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+                  const a = document.createElement('a')
+                  a.href = canvas.toDataURL('image/png')
+                  a.download = `${view.no || 'quotation'}.png`
+                  a.click()
+                  toast('Quotation saved as image.')
+                } catch {
+                  toast('Could not render image. Try Print / PDF instead.')
+                } finally {
+                  setSaving(false)
+                }
+              }}><Download size={15} /> {saving ? 'Rendering…' : 'Save as image'}</Button>
               <Button variant="secondary" onClick={() => setView(null)}>Close</Button>
             </div>
             <div id="print" className="bg-white text-slate-900 rounded-xl shadow-xl p-8">
