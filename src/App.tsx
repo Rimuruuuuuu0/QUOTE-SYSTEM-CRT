@@ -1019,11 +1019,11 @@ export default function App() {
               )}
               <div className="py-2 text-sm"><Badge>{view.status}</Badge></div>
               <table className="w-full text-sm">
-                <thead><tr className="bg-brand-bluesoft text-left"><th className="p-2">Photo</th><th className="p-2">Category</th><th className="p-2">Item Description</th><th className="text-right">Quantity</th><th className="text-right">Unit Price</th><th className="text-right p-2">Amount</th></tr></thead>
+                <thead><tr className="bg-brand-bluesoft text-left"><th className="p-2">Photo</th><th className="p-2">Category</th><th className="p-2">Item Description</th><th className="text-right px-3">Quantity</th><th className="text-right px-3">Unit Price</th><th className="text-right p-2">Amount</th></tr></thead>
                 <tbody>{(view.items || []).map((it) => {
                   const prod = products.find((p) => p.id === it.pid)
                   const src = it.imageUrl || photoOf(prod || { imageUrl: '', sku: '' })
-                  return (<tr key={it.key} className="border-b"><td className="p-2">{src ? <img src={src} alt="" className="h-12 w-12 rounded object-cover border" /> : <span className="text-slate-300">—</span>}</td><td className="p-2">{prod?.category || ''}</td><td className="p-2">{it.name}{it.variant ? ` (${it.variant})` : ''}</td><td className="num text-right">{it.qty}</td><td className="num text-right">{money(it.price)}</td><td className="num text-right p-2">{money(it.qty * it.price)}</td></tr>)
+                  return (<tr key={it.key} className="border-b"><td className="p-2">{src ? <img src={src} alt="" className="h-12 w-12 rounded object-cover border" /> : <span className="text-slate-300">—</span>}</td><td className="p-2">{prod?.category || ''}</td><td className="p-2">{it.name}{it.variant ? ` (${it.variant})` : ''}</td><td className="num text-right px-3">{it.qty}</td><td className="num text-right px-3 whitespace-nowrap">{money(it.price)}</td><td className="num text-right p-2 whitespace-nowrap">{money(it.qty * it.price)}</td></tr>)
                 })}</tbody>
               </table>
               <div className="ml-auto w-64 mt-4 text-sm space-y-1">
