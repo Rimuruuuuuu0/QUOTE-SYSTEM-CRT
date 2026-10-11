@@ -324,8 +324,8 @@ export default function App() {
     setQuotes((prev) => prev.filter((x) => x.id !== r.id))
   }
 
-  const saveQuote = (show: boolean) => {
-    if (!q.items.length) { alert('Add at least one item before saving.'); return }
+  const persistQuote = (): Quote | null => {
+    if (!q.items.length) { alert('Add at least one item before saving.'); return null }
     const copy = JSON.parse(JSON.stringify(q)) as Quote
     if (copy.id) {
       setQuotes((prev) => prev.map((x) => (x.id === copy.id ? copy : x)))
@@ -335,6 +335,33 @@ export default function App() {
       setSettings((s) => ({ ...s, counter: (s.counter || 0) + 1 }))
     }
     setQ(copy)
+    return copy
+  }
+
+  const downloadQuoteImage = async (qt: Quote) => {
+    setView(qt)
+    setSaving(true)
+    try {
+      await new Promise((r) => setTimeout(r, 650))
+      const { default: html2canvas } = await import('html2canvas')
+      const el = document.getElementById('print')
+      if (!el) throw new Error('missing')
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+      const a = document.createElement('a')
+      a.href = canvas.toDataURL('image/png')
+      a.download = `${qt.no || 'quotation'}.png`
+      a.click()
+      toast('Quotation saved as image.')
+    } catch {
+      toast('Could not render image. Try Print / PDF instead.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveQuote = (show: boolean) => {
+    const copy = persistQuote()
+    if (!copy) return
     if (show) setView(copy)
   }
 
@@ -680,6 +707,7 @@ export default function App() {
                   <Button className="col-span-2" onClick={() => saveQuote(true)}><Save size={15} /> Save quotation</Button>
                   <Button variant="outline" onClick={() => saveQuote(false)}>Save draft</Button>
                   <Button variant="outline" onClick={() => setTab('quotes')}><FolderOpen size={15} /> Load</Button>
+                  <Button variant="secondary" className="col-span-2" disabled={saving} onClick={() => { const copy = persistQuote(); if (copy) downloadQuoteImage(copy) }}><Download size={15} /> {saving ? 'Rendering…' : 'Save as image'}</Button>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" className="flex-1" onClick={resetQuote}>Clear</Button>
@@ -951,25 +979,7 @@ export default function App() {
           <div className="max-w-3xl mx-auto">
             <div className="flex justify-end gap-2 mb-3">
               <Button onClick={() => window.print()}><Printer size={15} /> Print / PDF</Button>
-              <Button variant="secondary" disabled={saving} onClick={async () => {
-                if (!view) return
-                setSaving(true)
-                try {
-                  const { default: html2canvas } = await import('html2canvas')
-                  const el = document.getElementById('print')
-                  if (!el) throw new Error('missing')
-                  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
-                  const a = document.createElement('a')
-                  a.href = canvas.toDataURL('image/png')
-                  a.download = `${view.no || 'quotation'}.png`
-                  a.click()
-                  toast('Quotation saved as image.')
-                } catch {
-                  toast('Could not render image. Try Print / PDF instead.')
-                } finally {
-                  setSaving(false)
-                }
-              }}><Download size={15} /> {saving ? 'Rendering…' : 'Save as image'}</Button>
+              <Button variant="secondary" disabled={saving} onClick={() => { if (view) downloadQuoteImage(view) }}><Download size={15} /> {saving ? 'Rendering…' : 'Save as image'}</Button>
               <Button variant="secondary" onClick={() => setView(null)}>Close</Button>
             </div>
             <div id="print" className="bg-white text-slate-900 rounded-xl shadow-xl p-8">
