@@ -131,8 +131,24 @@
 }
 .stat-glow { text-shadow: 0 0 22px rgba(62, 143, 217, 0.45); }
 .dark .stat-glow { text-shadow: 0 0 22px rgba(62, 143, 217, 0.6); }
+.orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  pointer-events: none;
+  animation: drift 14s ease-in-out infinite alternate;
+}
+.orb-2 { animation-duration: 19s; animation-delay: -6s; }
+@keyframes drift {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(46px, -30px) scale(1.12); }
+}
+.tilt-stage { perspective: 1100px; }
+.tilt-card { transition: transform 0.25s ease; transform-style: preserve-3d; will-change: transform; }
 @media (prefers-reduced-motion: reduce) {
   .glow-cta { animation: none; }
+  .orb { animation: none; }
+  .tilt-card { transition: none; }
 }
 
 @media print {

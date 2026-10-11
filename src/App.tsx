@@ -48,6 +48,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 
 import { assistQuery, type Pick as APick } from '@/lib/assistant'
 import { needsVariant } from '@/lib/variants'
+import LoginFX from '@/components/LoginFX'
 import { CATS } from '@/lib/categories'
 
 const useCountUp = (target: number, dur = 700) => {
@@ -274,8 +275,25 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen grid place-items-center p-4 bg-gradient-to-br from-brand-bluedark via-[#A9CBEF] to-brand-bluedark">
-        <Card className="w-full max-w-sm border-t-4 border-t-brand-red overflow-hidden"><CardContent className="space-y-3 pt-6">
+      <div
+        className="tilt-stage relative min-h-screen grid place-items-center p-4 overflow-hidden bg-gradient-to-br from-brand-bluedark via-[#A9CBEF] to-brand-bluedark"
+        onMouseMove={(e) => {
+          const el = document.getElementById('login-card')
+          if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+          const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+          const rx = ((e.clientY - r.top) / r.height - 0.5) * -7
+          const ry = ((e.clientX - r.left) / r.width - 0.5) * 9
+          el.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
+        }}
+        onMouseLeave={() => {
+          const el = document.getElementById('login-card')
+          if (el) el.style.transform = 'rotateX(0deg) rotateY(0deg)'
+        }}
+      >
+        <LoginFX className="absolute inset-0 h-full w-full" />
+        <div className="orb h-72 w-72 left-[8%] top-[12%] bg-[#3E8FD9]/40" />
+        <div className="orb orb-2 h-80 w-80 right-[6%] bottom-[10%] bg-[#A9CBEF]/50" />
+        <Card id="login-card" className="tilt-card relative z-10 w-full max-w-sm border-t-4 border-t-brand-red overflow-hidden"><CardContent className="space-y-3 pt-6">
           <img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-[62px] w-auto object-contain mx-auto" />
           <h1 className="text-xl font-semibold text-center">Sign in</h1>
           <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -523,7 +541,9 @@ export default function App() {
       <main className="max-w-6xl mx-auto px-4 py-6">
         <div key={tab} className="tab-enter">
         {tab === 'dash' && (
-          <section className="space-y-6">
+          <section className="relative space-y-6">
+            <div className="orb h-64 w-64 -left-24 top-24 bg-[#3E8FD9]/25" />
+            <div className="orb orb-2 h-72 w-72 -right-20 bottom-0 bg-[#A9CBEF]/40" />
             <div className="flex items-end justify-between flex-wrap gap-3">
               <div>
                 <div className="hud-eyebrow hidden sm:block">SYS.01 // command deck</div>
