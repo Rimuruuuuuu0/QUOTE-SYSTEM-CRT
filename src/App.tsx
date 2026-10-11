@@ -254,6 +254,11 @@ export default function App() {
     return products.filter((p) => ((p.name || '') + ' ' + (p.variant || '') + (p.category || '')).toLowerCase().includes(s)).slice(0, 8)
   }, [search, products])
 
+  const cQuotes = useCountUp(quotes.length)
+  const cPend = useCountUp(quotes.filter((x) => ['Draft', 'Sent'].includes(x.status)).length)
+  const cAcc = useCountUp(quotes.filter((x) => x.status === 'Accepted').reduce((s, x) => s + totals(x).total, 0))
+  const cProd = useCountUp(products.length)
+
   if (!authReady) {
     return <div className="min-h-screen grid place-items-center text-slate-500 text-sm">Loading…</div>
   }
@@ -350,10 +355,6 @@ export default function App() {
   const todayIso = new Date().toISOString().slice(0, 10)
   const followUps = quotes.filter((x) => x.status === 'Sent' && x.valid && x.valid < todayIso).slice(0, 5)
   const lowTop = [...products].filter((p) => p.stock <= 2).sort((a, b) => a.stock - b.stock).slice(0, 5)
-  const cQuotes = useCountUp(quotes.length)
-  const cPend = useCountUp(pendingCount)
-  const cAcc = useCountUp(acceptedVal)
-  const cProd = useCountUp(products.length)
   const spark = (() => {
     const vals: number[] = []
     for (let i = 13; i >= 0; i--) {
