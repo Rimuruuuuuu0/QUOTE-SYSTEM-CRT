@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
-import { LogOut, Cloud, CloudOff, Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload, Bot, Sun, Moon, Monitor } from 'lucide-react'
+import { LogOut, Cloud, CloudOff, Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload, Bot, Sun, Moon, Monitor, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input, Textarea, Select } from '@/components/ui/input'
@@ -119,6 +119,13 @@ export default function App() {
   const [gemKey, setGemKey] = useState(() => { try { return localStorage.getItem('gemini-key') || '' } catch { return '' } })
   const [aiSmart, setAiSmart] = useState(true)
   const [aloading, setAloading] = useState(false)
+  const [railOpen, setRailOpen] = useState(() => {
+    try { return localStorage.getItem('crt-rail') !== 'closed' } catch { return true }
+  })
+  const toggleRail = () => setRailOpen((o) => {
+    try { localStorage.setItem('crt-rail', o ? 'closed' : 'open') } catch {}
+    return !o
+  })
 
   const ask = async (text: string) => {
     const query = text.trim()
@@ -441,26 +448,40 @@ export default function App() {
     <div className="min-h-screen tech-grid bg-gradient-to-br from-[#7FA29B] via-[#FBF6EF] to-[#D3928E] dark:from-[#14171B] dark:via-[#2A2F35] dark:to-[#14171B]">
       <div className="flex h-2"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
       <div className="flex items-start">
-        <aside className="hidden lg:flex sticky top-0 h-screen w-[72px] shrink-0 flex-col items-center gap-1.5 py-4 bg-[#FBF6EF]/50 dark:bg-[#2A2F35]/75 backdrop-blur-[12px] border-r border-white/50 dark:border-[#D3928E]/25 z-30">
-          <img src="/logo.png" alt="CRT" className="h-9 w-9 rounded-lg object-contain bg-white shadow mb-2" title="ChrisRandomTech" />
+        <aside className={`hidden lg:flex sticky top-0 h-screen shrink-0 flex-col gap-1.5 py-4 bg-[#FBF6EF]/50 dark:bg-[#2A2F35]/75 backdrop-blur-[12px] border-r border-white/50 dark:border-[#D3928E]/25 z-30 transition-all ${railOpen ? 'w-44 px-3' : 'w-[72px] px-0 items-center'}`}>
+          <div className={`flex items-center gap-2 mb-1 ${railOpen ? 'px-1' : ''}`}>
+            <img src="/logo.png" alt="CRT" className="h-9 w-9 rounded-lg object-contain bg-white shadow shrink-0" title="ChrisRandomTech" />
+            {railOpen && <span className="text-xs font-bold tracking-wide text-[#2A2F35] dark:text-[#FBF6EF] flex-1">MENU</span>}
+            <button onClick={toggleRail} title={railOpen ? 'Collapse sidebar' : 'Expand sidebar'} className="grid place-items-center h-7 w-7 rounded-lg text-slate-500 hover:bg-white/70 dark:hover:bg-white/10 shrink-0">
+              {railOpen ? <ChevronsLeft size={15} /> : <ChevronsRight size={15} />}
+            </button>
+          </div>
           {TABS.map((tb) => {
             const active = tab === tb.id
             const badge = tb.id === 'quotes' ? pendingCount : tb.id === 'products' ? lowCount : 0
+            const label = tb.label + (badge ? ` (${badge})` : '')
             return (
-              <button
-                key={tb.id}
-                title={tb.label + (badge ? ` (${badge})` : '')}
-                onClick={() => { setTab(tb.id); window.scrollTo(0, 0) }}
-                className={`chamfer-sm relative grid place-items-center h-11 w-11 rounded-2xl transition-all hover:scale-105 ${active ? 'bg-gradient-to-br from-[#2A2F35] to-[#A96F6B] text-white shadow-[0_6px_16px_-4px_rgba(42,47,53,0.7)]' : 'text-slate-600 dark:text-[#FBF6EF] hover:bg-white/70 dark:hover:bg-white/10'}`}
-              >
-                {tb.icon}
-                {!!badge && <span className={`absolute top-0 right-0 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold grid place-items-center text-[#2A2F35] ${tb.id === 'products' ? 'bg-brand-red' : 'bg-brand-red'}`}>{badge}</span>}
-              </button>
+              <div key={tb.id} className={`group relative ${railOpen ? '' : 'mx-auto'}`}>
+                <button
+                  title={label}
+                  onClick={() => { setTab(tb.id); window.scrollTo(0, 0) }}
+                  className={`transition-all hover:scale-[1.03] ${railOpen ? 'flex items-center gap-2.5 h-11 w-full px-3' : 'grid place-items-center h-11 w-11'} chamfer-sm ${active ? 'bg-gradient-to-br from-[#2A2F35] to-[#A96F6B] text-white shadow-[0_6px_16px_-4px_rgba(42,47,53,0.7)]' : 'text-slate-600 dark:text-[#FBF6EF] hover:bg-white/70 dark:hover:bg-white/10'}`}
+                >
+                  <span className="shrink-0">{tb.icon}</span>
+                  {railOpen && <span className="text-sm font-medium flex-1 text-left">{tb.label}</span>}
+                  {!!badge && <span className={`${railOpen ? '' : 'absolute top-0 right-0'} min-w-5 h-5 px-1 rounded-full text-[10px] font-bold grid place-items-center bg-brand-red text-[#2A2F35]`}>{badge}</span>}
+                </button>
+                {!railOpen && (
+                  <span className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-lg bg-[#2A2F35] text-[#FBF6EF] text-xs font-medium px-2.5 py-1.5 shadow-lg opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 group-active:opacity-100 group-active:scale-100 group-focus-visible:opacity-100 transition-all z-50">
+                    {label}
+                  </span>
+                )}
+              </div>
             )
           })}
-          <div className="mt-auto flex flex-col items-center gap-1.5 pb-1">
-            <span className={`h-2.5 w-2.5 rounded-full ${cloud === 'ready' ? 'bg-emerald-500' : cloud === 'saving' ? 'bg-brand-red animate-pulse' : 'bg-slate-400'}`} title={cloud === 'ready' ? 'Saved to cloud' : cloud} />
-            <span className="num text-[10px] font-semibold text-brand-bluedark dark:text-[#FBF6EF]" title="Accepted this month">{monthVal >= 1000 ? `₱${Math.round(monthVal / 1000)}k` : money(monthVal)}</span>
+          <div className={`mt-auto pb-1 text-[#2A2F35] dark:text-[#FBF6EF] ${railOpen ? 'flex items-center gap-2 px-1' : 'flex flex-col items-center gap-1.5'}`}>
+            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${cloud === 'ready' ? 'bg-emerald-500' : cloud === 'saving' ? 'bg-brand-red animate-pulse' : 'bg-slate-400'}`} title={cloud === 'ready' ? 'Saved to cloud' : cloud} />
+            <span className="num text-[10px] font-semibold" title="Accepted this month">{railOpen ? `Month ${monthVal >= 1000 ? `₱${Math.round(monthVal / 1000)}k` : money(monthVal)}` : monthVal >= 1000 ? `₱${Math.round(monthVal / 1000)}k` : money(monthVal)}</span>
           </div>
         </aside>
         <div className="flex-1 min-w-0">
