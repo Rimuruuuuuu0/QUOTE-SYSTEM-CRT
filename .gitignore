@@ -6,3 +6,7 @@ dist/
 dist-ssr/
 *.local
 tsconfig.tsbuildinfo
+
+# customer backups must never enter git
+quotation-backup-*.json
+*-backup-*.json

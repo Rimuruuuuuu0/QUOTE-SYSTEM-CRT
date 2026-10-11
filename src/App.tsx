@@ -234,7 +234,7 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen grid place-items-center p-4 bg-gradient-to-br from-brand-bluedark via-brand-blue to-brand-reddark">
+      <div className="min-h-screen grid place-items-center p-4 bg-gradient-to-br from-brand-bluedark via-[#7FA29B] to-brand-bluedark">
         <Card className="w-full max-w-sm border-t-4 border-t-brand-red overflow-hidden"><CardContent className="space-y-3 pt-6">
           <img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-12 w-auto object-contain mx-auto" />
           <h1 className="text-xl font-semibold text-center">Sign in</h1>
@@ -353,10 +353,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#D7A98A] via-[#F9EFE6] to-[#D7A98A] dark:from-[#160C07] dark:via-[#2A170E] dark:to-[#160C07]">
+    <div className="min-h-screen bg-gradient-to-br from-[#7FA29B] via-[#FBF6EF] to-[#D3928E] dark:from-[#14171B] dark:via-[#2A2F35] dark:to-[#14171B]">
       <div className="flex h-2"><div className="flex-1 bg-brand-blue" /><div className="flex-1 bg-brand-red" /><div className="flex-1 bg-brand-blue" /></div>
       <div className="flex items-start">
-        <aside className="hidden lg:flex sticky top-0 h-screen w-[72px] shrink-0 flex-col items-center gap-1.5 py-4 bg-white/45 dark:bg-[#241209]/80 backdrop-blur-[12px] border-r border-white/50 dark:border-[#A35A3A]/25 z-30">
+        <aside className="hidden lg:flex sticky top-0 h-screen w-[72px] shrink-0 flex-col items-center gap-1.5 py-4 bg-[#FBF6EF]/50 dark:bg-[#2A2F35]/75 backdrop-blur-[12px] border-r border-white/50 dark:border-[#D3928E]/25 z-30">
           <img src="/logo.png" alt="CRT" className="h-9 w-9 rounded-lg object-contain bg-white shadow mb-2" title="ChrisRandomTech" />
           {TABS.map((tb) => {
             const active = tab === tb.id
@@ -366,20 +366,20 @@ export default function App() {
                 key={tb.id}
                 title={tb.label + (badge ? ` (${badge})` : '')}
                 onClick={() => { setTab(tb.id); window.scrollTo(0, 0) }}
-                className={`relative grid place-items-center h-11 w-11 rounded-xl transition-colors ${active ? 'bg-brand-blue text-white shadow-[0_4px_14px_-4px_rgba(46,26,18,0.7)]' : 'text-slate-600 dark:text-[#D7A98A] hover:bg-white/70 dark:hover:bg-white/10'}`}
+                className={`relative grid place-items-center h-11 w-11 rounded-xl transition-colors ${active ? 'bg-brand-blue text-white shadow-[0_4px_14px_-4px_rgba(42,47,53,0.7)]' : 'text-slate-600 dark:text-[#FBF6EF] hover:bg-white/70 dark:hover:bg-white/10'}`}
               >
                 {tb.icon}
-                {!!badge && <span className={`absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold grid place-items-center text-white ${tb.id === 'products' ? 'bg-brand-red' : 'bg-amber-500'}`}>{badge}</span>}
+                {!!badge && <span className={`absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-[10px] font-bold grid place-items-center text-[#2A2F35] ${tb.id === 'products' ? 'bg-brand-red' : 'bg-brand-red'}`}>{badge}</span>}
               </button>
             )
           })}
           <div className="mt-auto flex flex-col items-center gap-1.5 pb-1">
-            <span className={`h-2.5 w-2.5 rounded-full ${cloud === 'ready' ? 'bg-emerald-500' : cloud === 'saving' ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'}`} title={cloud === 'ready' ? 'Saved to cloud' : cloud} />
-            <span className="num text-[10px] font-semibold text-brand-bluedark dark:text-[#F9EFE6]" title="Accepted this month">{monthVal >= 1000 ? `₱${Math.round(monthVal / 1000)}k` : money(monthVal)}</span>
+            <span className={`h-2.5 w-2.5 rounded-full ${cloud === 'ready' ? 'bg-emerald-500' : cloud === 'saving' ? 'bg-brand-red animate-pulse' : 'bg-slate-400'}`} title={cloud === 'ready' ? 'Saved to cloud' : cloud} />
+            <span className="num text-[10px] font-semibold text-brand-bluedark dark:text-[#FBF6EF]" title="Accepted this month">{monthVal >= 1000 ? `₱${Math.round(monthVal / 1000)}k` : money(monthVal)}</span>
           </div>
         </aside>
         <div className="flex-1 min-w-0">
-      <header className="sticky top-0 z-20 border-b border-white/40 bg-white/55 dark:bg-[#241209]/80 dark:border-[#A35A3A]/25 backdrop-blur-[12px] shadow-[0_2px_16px_-6px_rgba(46,26,18,0.35)]">
+      <header className="sticky top-0 z-20 border-b border-white/40 bg-[#FBF6EF]/60 dark:bg-[#2A2F35]/75 dark:border-[#D3928E]/25 backdrop-blur-[12px] shadow-[0_2px_16px_-6px_rgba(42,47,53,0.35)]">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <span className="logo-anim"><img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-10 w-auto object-contain" /></span>
@@ -419,31 +419,31 @@ export default function App() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
-                { label: 'Total quotes', value: String(quotes.length), bar: '#A35A3A', text: 'text-brand-red' },
-                { label: 'Pending (Draft + Sent)', value: String(quotes.filter((x) => ['Draft','Sent'].includes(x.status)).length), bar: '#2E1A12', text: 'text-brand-bluedark' },
-                { label: 'Accepted value', value: money(acceptedVal), bar: '#6A3B2A', text: 'text-brand-blue' },
-                { label: 'Products', value: String(products.length), bar: '#A35A3A', text: 'text-brand-red' },
+                { label: 'Total quotes', value: String(quotes.length), bar: '#7FA29B', text: 'text-[#2A2F35]' },
+                { label: 'Pending (Draft + Sent)', value: String(quotes.filter((x) => ['Draft','Sent'].includes(x.status)).length), bar: '#2A2F35', text: 'text-[#2A2F35]' },
+                { label: 'Accepted value', value: money(acceptedVal), bar: '#D3928E', text: 'text-[#2A2F35]' },
+                { label: 'Products', value: String(products.length), bar: '#7FA29B', text: 'text-[#2A2F35]' },
               ].map((s) => (
                 <Card key={s.label} className="overflow-hidden border-t-4" style={{ borderTopColor: s.bar }}><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className={`num text-xl mt-1 font-semibold ${s.text}`}>{s.value}</div></CardContent></Card>
               ))}
             </div>
             <div className="grid md:grid-cols-2 gap-3">
-              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#A35A3A' }}>
+              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#D3928E' }}>
                 <CardHeader>Follow up <span className="text-xs font-normal text-slate-500">expired Sent quotes</span></CardHeader>
                 {followUps.map((r) => (
-                  <button key={r.id} onClick={() => setView(r)} className="w-full flex justify-between px-4 py-2.5 text-left text-sm hover:bg-amber-50 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
+                  <button key={r.id} onClick={() => setView(r)} className="w-full flex justify-between px-4 py-2.5 text-left text-sm hover:bg-[#D3928E]/15 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
                     <span><span className="num">{r.no}</span><span className="ml-2">{r.customer?.name || 'No name'}</span></span>
-                    <span className="text-amber-600 text-xs">expired {r.valid}</span>
+                    <span className="text-brand-reddark text-xs">expired {r.valid}</span>
                   </button>
                 ))}
                 {!followUps.length && <p className="px-4 py-6 text-center text-sm text-slate-500">Nothing overdue. Every Sent quote is still valid.</p>}
               </Card>
-              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#6A3B2A' }}>
+              <Card className="overflow-hidden border-t-4" style={{ borderTopColor: '#2A2F35' }}>
                 <CardHeader>Restock radar <span className="text-xs font-normal text-slate-500">≤2 left</span></CardHeader>
                 {lowTop.map((p) => (
                   <button key={p.id} onClick={() => { setTab('products'); setPsearch(p.name) }} className="w-full flex justify-between px-4 py-2.5 text-left text-sm hover:bg-red-50 dark:hover:bg-slate-800 border-b last:border-0 border-slate-100 dark:border-slate-800">
                     <span>{p.name}{p.variant ? ` (${p.variant})` : ''}</span>
-                    <span className="num text-brand-red font-semibold">{p.stock} left</span>
+                    <span className="num text-brand-reddark font-semibold">{p.stock} left</span>
                   </button>
                 ))}
                 {!lowTop.length && <p className="px-4 py-6 text-center text-sm text-slate-500">Shelves healthy — nothing at reorder level.</p>}
@@ -482,11 +482,11 @@ export default function App() {
                     <div className="absolute z-10 mt-1 w-full max-h-64 overflow-auto rounded-lg border bg-white dark:bg-slate-900 shadow-lg">
                       {matches.map((p) => (
                         <button key={p.id} onClick={() => addItem(p)} className="w-full flex justify-between px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800">
-                          <span>{p.name}{p.variant ? <span className="ml-1 text-brand-blue">[{p.variant}]</span> : null} <span className="text-slate-500">· {p.category}</span></span>
+                          <span>{p.name}{p.variant ? <span className="ml-1 text-brand-bluedark">[{p.variant}]</span> : null} <span className="text-slate-500">· {p.category}</span></span>
                           <span className="num">{money(p.price)}</span>
                         </button>
                       ))}
-                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, variant: '', imageUrl: '', qty: 1, cost: 0, margin: settings.markup || 20, price: 0 }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-brand-blue border-t">
+                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, variant: '', imageUrl: '', qty: 1, cost: 0, margin: settings.markup || 20, price: 0 }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-brand-reddark border-t">
                         Add "{search}" as custom item
                       </button>
                     </div>
@@ -538,10 +538,10 @@ export default function App() {
                 })
                 if (!hist.length && !alerts.length) return null
                 return (
-                  <Card className="border-t-4" style={{ borderTopColor: '#6A3B2A' }}><CardContent className="space-y-2 text-sm">
+                  <Card className="border-t-4" style={{ borderTopColor: '#7FA29B' }}><CardContent className="space-y-2 text-sm">
                     <CardTitle className="text-sm uppercase tracking-wide text-slate-500">Clerk notes</CardTitle>
                     {!!hist.length && <div>Repeat buyer — <b>{hist.length}</b> past quote(s), <span className="num">{money(histTotal)}</span> lifetime. Last: {hist[0].no} ({hist[0].status}).</div>}
-                    {alerts.map((a, i) => <div key={i} className="text-amber-700">⚠ {a}</div>)}
+                    {alerts.map((a, i) => <div key={i} className="text-brand-reddark">⚠ {a}</div>)}
                   </CardContent></Card>
                 )
               })()}
@@ -689,10 +689,10 @@ export default function App() {
                     {products.filter((x) => (catFilter === 'All' || x.category === catFilter) && (x.name + ' ' + (x.variant || '') + x.category).toLowerCase().includes(psearch.toLowerCase())).map((p) => (
                       <tr key={p.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
                         <td className="p-3">{photoOf(p) ? <img src={photoOf(p)} alt="" className="h-10 w-10 rounded object-cover border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} /> : <span className="text-slate-300 text-xs">No photo</span>}</td>
-                        <td className="p-3">{p.name}</td><td className="text-brand-blue">{p.variant || '—'}</td><td><Badge className="uppercase tracking-wide">{p.category}</Badge></td>
+                        <td className="p-3">{p.name}</td><td className="text-brand-bluedark">{p.variant || '—'}</td><td><Badge className="uppercase tracking-wide">{p.category}</Badge></td>
                         <td className="num text-right text-slate-500">{p.cost ? money(p.cost) : '—'}</td>
                         <td className="num text-right">{money(p.price)}</td>
-                        <td className={cn('num text-right', p.stock <= 2 && 'text-amber-600')}>{p.stock}</td>
+                        <td className={cn('num text-right', p.stock <= 2 && 'text-brand-reddark font-semibold')}>{p.stock}</td>
                         <td className="p-3 text-right whitespace-nowrap space-x-1">
                           <Button variant="outline" size="sm" onClick={() => setPf({ ...p })}>Edit</Button>
                           <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setProducts((prev) => prev.filter((x) => x.id !== p.id))}>Delete</Button>
@@ -734,7 +734,7 @@ export default function App() {
                 ))}
               </div>
               {!!awarns.length && (
-                <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950 p-3 text-sm space-y-1">
+                <div className="rounded-lg border border-[#D3928E]/60 bg-[#D3928E]/10 p-3 text-sm space-y-1">
                   {awarns.map((w, i) => <div key={i}>⚠ {w}</div>)}
                 </div>
               )}
