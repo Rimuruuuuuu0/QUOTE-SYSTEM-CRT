@@ -1035,7 +1035,7 @@ export default function App() {
             </div>
             <div id="print" className="bg-white text-slate-900 rounded-xl shadow-xl p-8">
               <div className="bg-brand-blue text-white rounded-t-lg px-4 py-2 flex justify-between items-center">
-                <span className="inline-block"><img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-12 w-auto object-contain" /></span>
+                <span className="inline-block"><img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-24 w-auto object-contain" /></span>
                 <span className="italic">System</span>
               </div>
               <div className="flex justify-between border-b-2 border-brand-blue pb-4 pt-3">
