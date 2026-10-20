@@ -73,3 +73,22 @@ export async function ensureShared(uid: string, local: CloudData): Promise<Cloud
     return clean(local) as CloudData
   }
 }
+
+/** Per-user profile: preparedBy is stored here so each staff member has their own name. */
+export async function loadUserProfile(uid: string): Promise<{ preparedBy?: string } | null> {
+  const snap = await getDoc(doc(db, 'users', uid))
+  if (!snap.exists()) return null
+  return { preparedBy: snap.data().preparedBy || undefined } as { preparedBy?: string }
+}
+
+export async function saveUserProfile(uid: string, preparedBy: string): Promise<void> {
+  await setDoc(doc(db, 'users', uid), { preparedBy, updatedAt: serverTimestamp() }, { merge: true })
+}
+
+export function subscribeUserProfile(uid: string, cb: (d: { preparedBy?: string } | null) => void): Unsubscribe {
+  return onSnapshot(
+    doc(db, 'users', uid),
+    (snap) => cb(snap.exists() ? { preparedBy: snap.data().preparedBy || undefined } : null),
+    () => {}
+  )
+}

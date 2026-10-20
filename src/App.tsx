@@ -7,7 +7,7 @@ import { Input, Textarea, Select } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { importLoyverseCsv } from '@/lib/loyverse'
-import { auth, ensureShared, saveShared, subscribeShared } from '@/lib/firebase'
+import { auth, ensureShared, saveShared, subscribeShared, loadUserProfile, saveUserProfile, subscribeUserProfile } from '@/lib/firebase'
 import { useStore, blankQuote, newQuoteNo } from '@/lib/store'
 import { money, photoOf, uid } from '@/lib/utils'
 import { totals, srp, type Product, type Quote, type QuoteItem, type QuoteStatus } from '@/lib/types'
@@ -91,6 +91,8 @@ export default function App() {
   const [loginErr, setLoginErr] = useState('')
   const [cloud, setCloud] = useState<'loading' | 'ready' | 'saving'>('loading')
   const savedRef = useRef('')
+  const [preparedBy, setPreparedBy] = useState('')
+  const [profileUnsub, setProfileUnsub] = useState<(() => void) | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
     try { return (localStorage.getItem('crt-theme') as 'light' | 'dark' | 'system') || 'system' } catch { return 'system' }
   })
@@ -207,36 +209,53 @@ export default function App() {
 
   // Shared store: every account loads the SAME products/quotes, then stays
   // live — a sale on one account updates all accounts within seconds.
+  // preparedBy is PER-USER, not shared — stored in users/{uid}.
   useEffect(() => {
     if (!user) return
     setCloud('loading')
     let unsub: (() => void) | null = null
+    let profileUnsubLocal: (() => void) | null = null
     ensureShared(user.uid, { products, quotes, settings })
       .then((d) => {
+        // Strip preparedBy from shared settings — it belongs to each user, not the shared store
+        const { preparedBy: _, ...sharedSettings } = d.settings
         setProducts(d.products)
         setQuotes(d.quotes)
-        setSettings((s) => ({ ...s, ...d.settings }))
-        savedRef.current = JSON.stringify(d)
+        setSettings((s) => ({ ...s, ...sharedSettings }))
+        savedRef.current = JSON.stringify({ products: d.products, quotes: d.quotes, settings: sharedSettings })
+
+        // Load this signed-in user's own preparedBy
+        loadUserProfile(user.uid).then((profile) => {
+          if (profile?.preparedBy) setPreparedBy(profile.preparedBy)
+        })
+
         unsub = subscribeShared((live) => {
           if (!live) return
           const snap = JSON.stringify(live)
           if (snap === savedRef.current) return // own echo
+          const { preparedBy: _, ...sharedSettingsLive } = live.settings
           setProducts(live.products)
           setQuotes(live.quotes)
-          setSettings((s) => ({ ...s, ...live.settings }))
+          setSettings((s) => ({ ...s, ...sharedSettingsLive }))
           savedRef.current = snap
+        })
+
+        profileUnsubLocal = subscribeUserProfile(user.uid, (profile) => {
+          if (profile) setPreparedBy(profile.preparedBy || '')
         })
       })
       .catch(() => {})
       .finally(() => setCloud('ready'))
-    return () => { if (unsub) unsub() }
+    return () => { if (unsub) unsub(); if (profileUnsubLocal) profileUnsubLocal() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   // Save to the shared store (debounced). Only saves when data differs.
+  // preparedBy is NOT saved to shared — it goes to the user's own doc below.
   useEffect(() => {
     if (!user || cloud !== 'ready') return
-    const data = { products, quotes, settings }
+    const { preparedBy: _, ...sharedSettings } = settings
+    const data = { products, quotes, settings: sharedSettings }
     const snap = JSON.stringify(data)
     if (snap === savedRef.current) return
     const h = setTimeout(() => {
@@ -249,6 +268,17 @@ export default function App() {
     return () => clearTimeout(h)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, quotes, settings, user, cloud])
+
+  // Save per-user preparedBy to users/{uid} (debounced)
+  useEffect(() => {
+    if (!user || cloud !== 'ready') return
+    const h = setTimeout(() => {
+      saveUserProfile(user.uid, preparedBy)
+        .catch(() => {})
+    }, 1500)
+    return () => clearTimeout(h)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, preparedBy, cloud])
 
   const login = async () => {
     setLoginErr('')
@@ -965,7 +995,7 @@ export default function App() {
               <label className="block text-sm">Store name<Input className="mt-1" value={settings.store} onChange={(e) => setSettings({ ...settings, store: e.target.value })} /></label>
               <label className="block text-sm">Company address<Input className="mt-1" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} /></label>
               <label className="block text-sm">Phone or email<Input className="mt-1" value={settings.contact} onChange={(e) => setSettings({ ...settings, contact: e.target.value })} /></label>
-              <label className="block text-sm">Prepared by<Input className="mt-1" placeholder="e.g. Christian" value={settings.preparedBy || ''} onChange={(e) => setSettings({ ...settings, preparedBy: e.target.value })} /></label>
+              <label className="block text-sm">Prepared by<Input className="mt-1" placeholder="e.g. Christian" value={preparedBy || ''} onChange={(e) => setPreparedBy(e.target.value)} /></label>
               <label className="block text-sm">Free Gemini key (optional, stays in this browser only)<Input type="password" className="mt-1" placeholder="Paste from aistudio.google.com" value={gemKey} onChange={(e) => { setGemKey(e.target.value); try { localStorage.setItem('gemini-key', e.target.value) } catch {} }} /></label>
               <p className="text-[11px] text-slate-400">Get a free key at aistudio.google.com → Get API key. Never shared to the cloud. Powers Smart answers in the Assistant tab.</p>
               <div className="grid grid-cols-3 gap-3">
@@ -1058,7 +1088,7 @@ export default function App() {
                 </div>
                 <div className="text-right">
                   <div>Quotation validity: {view.valid}</div>
-                  <div>Prepared by: {settings.preparedBy || 'Christian'}</div>
+                  <div>Prepared by: {preparedBy || 'Christian'}</div>
                 </div>
               </div>
               {(view.items || []).some((it) => it.imageUrl || photoOf(products.find((p) => p.id === it.pid) || { imageUrl: '', sku: '' })) && (
