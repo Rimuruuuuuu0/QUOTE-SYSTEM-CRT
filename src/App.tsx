@@ -784,11 +784,11 @@ export default function App() {
                   <Select className="!w-16" value={q.discountType} onChange={(e) => setQ({ ...q, discountType: e.target.value as '%' | '₱' })}><option value="%">%</option><option value="₱">₱</option></Select>
                 </div>
                 <div className="flex justify-between pt-3 border-t text-lg font-semibold"><span>Total</span><span className="num">{money(t.total)}</span></div>
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  <Button className="col-span-2" onClick={() => saveQuote(true)}><Save size={15} /> Save quotation</Button>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Button className="w-full sm:w-auto" onClick={() => saveQuote(true)}><Save size={15} /> Save quotation</Button>
                   <Button variant="outline" onClick={() => saveQuote(false)}>Save draft</Button>
                   <Button variant="outline" onClick={() => setTab('quotes')}><FolderOpen size={15} /> Load</Button>
-                  <Button variant="secondary" className="col-span-2" disabled={saving} onClick={() => { const copy = persistQuote(); if (copy) downloadQuoteImage(copy) }}><Download size={15} /> {saving ? 'Rendering…' : 'Save as image'}</Button>
+                  <Button variant="secondary" className="w-full sm:w-auto" disabled={saving} onClick={() => { const copy = persistQuote(); if (copy) downloadQuoteImage(copy) }}><Download size={15} /> {saving ? 'Rendering…' : 'Save as image'}</Button>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" className="flex-1" onClick={resetQuote}>Clear</Button>
