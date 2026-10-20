@@ -802,7 +802,7 @@ export default function App() {
                             <td className="py-2 px-3">
                               <div className="flex items-center gap-2">
                                 {src ? <img src={src} alt="" className="h-8 w-8 rounded-md object-cover border shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} /> : null}
-                                <Input value={it.name} className="bg-transparent border-none focus:ring-0 text-sm min-w-0" onChange={(e) => setItem(i, { name: e.target.value })} />
+                                <textarea value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} className="bg-transparent border-none focus:ring-0 text-sm min-w-[80px] max-w-[200px] resize-none leading-tight" rows={2} style={{ lineHeight: '1.25' }} />
                               </div>
                             </td>
                             <td className="py-2 px-3 text-right">
