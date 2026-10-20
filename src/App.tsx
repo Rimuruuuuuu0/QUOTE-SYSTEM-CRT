@@ -83,6 +83,7 @@ export default function App() {
   const [filter, setFilter] = useState<'all' | QuoteStatus>('all')
   const [view, setView] = useState<Quote | null>(null)
   const [saving, setSaving] = useState(false)
+  const [manualTotal, setManualTotal] = useState<number | null>(null)
   const [pf, setPf] = useState<(Omit<Product, 'id'> & { id?: number | string }) | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [authReady, setAuthReady] = useState(false)
@@ -354,6 +355,26 @@ export default function App() {
   const setCostMargin = (i: number, cost: number, margin: number) =>
     setItem(i, { cost, margin, price: srp(cost, margin) })
 
+  /** Bidirectional line editing: change any of cost / % / SRP and the others recompute. */
+  const setItemCost = (i: number, cost: number) => {
+    const it = q.items[i]
+    const margin = it.margin ?? settings.markup ?? 20
+    setItem(i, { cost, price: srp(cost, margin) })
+  }
+
+  const setItemMargin = (i: number, margin: number) => {
+    const it = q.items[i]
+    const cost = it.cost || 0
+    setItem(i, { margin, price: srp(cost, margin) })
+  }
+
+  const setItemPrice = (i: number, price: number) => {
+    const it = q.items[i]
+    const cost = it.cost || 0
+    const margin = cost > 0 ? Math.max(0, (price / cost - 1) * 100) : 0
+    setItem(i, { price, margin })
+  }
+
   /** A sale on ANY account deducts the SAME shared stocks for ALL accounts. */
   const adjustStock = (qt: Quote, dir: -1 | 1) =>
     setProducts((prev) =>
@@ -584,12 +605,12 @@ export default function App() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
-                { label: 'Total quotes', value: String(Math.round(cQuotes)), bar: '#A9CBEF', text: 'text-[#17263F]' },
-                { label: 'Pending (Draft + Sent)', value: String(Math.round(cPend)), bar: '#17263F', text: 'text-[#17263F]' },
-                { label: 'Accepted value', value: money(cAcc), bar: '#3E8FD9', text: 'text-[#17263F]' },
-                { label: 'Products', value: String(Math.round(cProd)), bar: '#A9CBEF', text: 'text-[#17263F]' },
+                { label: 'Total quotes', value: String(Math.round(cQuotes)), bar: '#A9CBEF' },
+                { label: 'Pending (Draft + Sent)', value: String(Math.round(cPend)), bar: '#17263F' },
+                { label: 'Accepted value', value: money(cAcc), bar: '#3E8FD9' },
+                { label: 'Products', value: String(Math.round(cProd)), bar: '#A9CBEF' },
               ].map((s) => (
-                <Card key={s.label} className="chamfer overflow-hidden border-t-4" style={{ borderTopColor: s.bar }}><CardContent><div className="text-sm text-slate-500">{s.label}</div><div className={`num stat-glow text-xl mt-1 font-semibold ${s.text}`}>{s.value}</div></CardContent></Card>
+                <Card key={s.label} className="chamfer overflow-hidden border-t-4" style={{ borderTopColor: s.bar }}><CardContent><div className="text-slate-500 dark:text-slate-400 text-sm">{s.label}</div><div className={`num text-xl mt-1 font-semibold stat-glow text-slate-900 dark:text-slate-100`}>{s.value}</div></CardContent></Card>
               ))}
             </div>
             <div className="grid md:grid-cols-2 gap-3">
@@ -707,7 +728,7 @@ export default function App() {
                           <span className="num">{money(p.price)}</span>
                         </button>
                       ))}
-                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, variant: '', imageUrl: '', qty: 1, cost: 0, margin: settings.markup || 20, price: 0 }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-brand-reddark border-t">
+                      <button onClick={() => { setQ({ ...q, items: [...q.items, { key: uid(), pid: null, name: search, variant: '', imageUrl: '', qty: 1, cost: 0, margin: settings.markup || 20, price: 0, category: '' }] }); setSearch('') }} className="w-full px-3 py-2 text-left text-sm text-brand-reddark border-t">
                         Add "{search}" as custom item
                       </button>
                     </div>
@@ -716,26 +737,24 @@ export default function App() {
                 <div className="mt-4 space-y-3">
                   {q.items.map((it, i) => {
                     const src = it.imageUrl || photoOf(products.find((p) => p.id === it.pid) || { imageUrl: '', sku: '' })
+                    const pc = it.pid ? products.find((p) => p.id === it.pid)?.category : ''
                     return (
                       <div key={it.key} className="rounded-xl border border-white/60 dark:border-white/10 bg-white/60 dark:bg-white/5 p-3 space-y-2.5">
                         <div className="flex items-start gap-2.5">
                           {src ? <img src={src} alt="" className="h-12 w-12 rounded-lg object-cover border shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} /> : null}
                           <div className="flex-1 min-w-0 space-y-2">
                             <Input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} />
-                            {(() => {
-                              const pc = it.pid ? products.find((p) => p.id === it.pid)?.category : ''
-                              return (it.pid == null || needsVariant(pc)) ? (
-                                <Input placeholder="Variant — e.g. 8GB, White, 3200MHz" value={it.variant || ''} onChange={(e) => setItem(i, { variant: e.target.value })} />
-                              ) : null
-                            })()}
+                            {it.pid == null && (
+                              <Input placeholder="Category (e.g. CPU, RAM)" value={it.category || ''} onChange={(e) => setItem(i, { category: e.target.value })} />
+                            )}
                           </div>
                           <button className="text-slate-400 hover:text-red-600 px-1 shrink-0" title="Remove line" onClick={() => setQ({ ...q, items: q.items.filter((_, xi) => xi !== i) })}><X size={16} /></button>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           <label className="text-xs text-slate-500">Qty<Input type="number" min={1} className="num mt-0.5" value={it.qty} onChange={(e) => setItem(i, { qty: Number(e.target.value) })} /></label>
-                          <label className="text-xs text-slate-500">Cost (supplier)<Input type="number" min={0} className="num mt-0.5" value={it.cost || 0} onChange={(e) => setCostMargin(i, Number(e.target.value), it.margin ?? settings.markup ?? 20)} /></label>
-                          <label className="text-xs text-slate-500">+ %<Input type="number" min={0} className="num mt-0.5" value={it.margin ?? settings.markup ?? 20} onChange={(e) => setCostMargin(i, it.cost || 0, Number(e.target.value))} /></label>
-                          <label className="text-xs text-slate-500">SRP<Input type="number" min={0} className="num font-medium mt-0.5" value={it.price} onChange={(e) => setItem(i, { price: Number(e.target.value) })} /></label>
+                          <label className="text-xs text-slate-500">Cost (supplier)<Input type="number" min={0} className="num mt-0.5" value={it.cost || 0} onChange={(e) => setItemCost(i, Number(e.target.value))} /></label>
+                          <label className="text-xs text-slate-500">+ %<Input type="number" min={0} className="num mt-0.5" value={it.margin ?? settings.markup ?? 20} onChange={(e) => setItemMargin(i, Number(e.target.value))} /></label>
+                          <label className="text-xs text-slate-500">SRP<Input type="number" min={0} className="num font-medium mt-0.5" value={it.price} onChange={(e) => setItemPrice(i, Number(e.target.value))} /></label>
                         </div>
                         <div className="flex justify-end items-baseline gap-2">
                           <span className="text-xs text-slate-500">Amount</span>
@@ -777,13 +796,15 @@ export default function App() {
               })()}
               <Card><CardContent className="space-y-3">
                 <CardTitle>Summary</CardTitle>
-                <div className="flex justify-between text-sm"><span>Subtotal</span><span className="num">{money(t.sub)}</span></div>
                 <div className="flex gap-2 items-center text-sm">
                   <span className="flex-1">Discount</span>
-                  <Input type="number" min={0} className="num !w-24" value={q.discount} onChange={(e) => setQ({ ...q, discount: Number(e.target.value) })} />
-                  <Select className="!w-16" value={q.discountType} onChange={(e) => setQ({ ...q, discountType: e.target.value as '%' | '₱' })}><option value="%">%</option><option value="₱">₱</option></Select>
+                  <Input type="number" min={0} className="num !w-24" value={manualTotal !== null ? Math.max(0, t.sub - manualTotal) : q.discount} onChange={(e) => { const val = Number(e.target.value); if (!isNaN(val)) { setManualTotal(null); setQ({ ...q, discount: val }) } }} />
+                  <Select className="!w-16" value={manualTotal !== null ? '₱' : q.discountType} disabled={manualTotal !== null} onChange={(e) => setQ({ ...q, discountType: e.target.value as '%' | '₱' })}><option value="%">%</option><option value="₱">₱</option></Select>
                 </div>
-                <div className="flex justify-between pt-3 border-t text-lg font-semibold"><span>Total</span><span className="num">{money(t.total)}</span></div>
+                <div className="flex gap-2 items-center text-sm">
+                  <span className="flex-1 font-bold">Total</span>
+                  <Input type="number" min={0} className="num !w-24 font-bold text-blue-600 dark:text-blue-400" value={manualTotal !== null ? manualTotal : t.total} onChange={(e) => { const val = Number(e.target.value); if (!isNaN(val)) { setManualTotal(val); setQ(prev => ({ ...prev, discount: Math.max(0, prev.items.reduce((s, i) => s + i.qty * i.price, 0) - val), discountType: '₱' as const })) } }} />
+                </div>
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Button className="w-full sm:w-auto" onClick={() => saveQuote(true)}><Save size={15} /> Save quotation</Button>
                   <Button variant="outline" onClick={() => saveQuote(false)}>Save draft</Button>

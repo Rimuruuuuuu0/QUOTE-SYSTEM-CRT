@@ -33,6 +33,8 @@ export interface QuoteItem {
   name: string
   /** Variant copied from product at add-time; editable per line. */
   variant?: string
+  /** Category for custom (non-catalog) items. */
+  category?: string
   /** Snapshot of product photo at add-time so quotes keep images. */
   imageUrl?: string
   qty: number
