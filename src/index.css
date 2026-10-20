@@ -305,6 +305,25 @@
   .rig2-wallpaper, .rig2-fan, .rig2-ram .stick, .rig2-kb .key, .rig2-spk .ring, .gpu-glow, .rig2-tiny { animation: none; }
 }
 
+select {
+  background-color: white;
+}
+.dark select {
+  background-color: #1f2937;
+}
+select option {
+  background-color: white;
+  color: #111827;
+}
+.dark select option {
+  background-color: #1f2937;
+  color: #f3f4f6;
+}
+.dark select option:checked {
+  background-color: #3e8fd9;
+  color: white;
+}
+
 @media print {
   body * {
     visibility: hidden;

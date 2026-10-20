@@ -371,7 +371,7 @@ export default function App() {
   const setItemPrice = (i: number, price: number) => {
     const it = q.items[i]
     const cost = it.cost || 0
-    const margin = cost > 0 ? Math.max(0, (price / cost - 1) * 100) : 0
+    const margin = cost > 0 ? Math.round(Math.max(0, (price / cost - 1) * 100)) : 0
     setItem(i, { price, margin })
   }
 
