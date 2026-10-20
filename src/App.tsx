@@ -415,8 +415,10 @@ export default function App() {
     return copy
   }
 
-  const downloadQuoteImage = async (qt: Quote) => {
-    setView(qt)
+  const downloadQuoteImage = async () => {
+    const copy = persistQuote()
+    if (!copy) return
+    setView(copy)
     setSaving(true)
     try {
       await new Promise((r) => setTimeout(r, 650))
@@ -426,7 +428,7 @@ export default function App() {
       const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
       const a = document.createElement('a')
       a.href = canvas.toDataURL('image/png')
-      a.download = `${qt.no || 'quotation'}.png`
+      a.download = `${copy.no || 'quotation'}.png`
       a.click()
       toast('Quotation saved as image.')
     } catch {
@@ -436,10 +438,47 @@ export default function App() {
     }
   }
 
-  const saveQuote = (show: boolean) => {
+  const downloadQuotePDF = async () => {
     const copy = persistQuote()
     if (!copy) return
-    if (show) setView(copy)
+    setView(copy)
+    setSaving(true)
+    try {
+      await new Promise((r) => setTimeout(r, 650))
+      const { default: html2canvas } = await import('html2canvas')
+      const { default: jsPDF } = await import('jspdf')
+      const el = document.getElementById('print')
+      if (!el) throw new Error('missing')
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const imgProps = pdf.getImageProperties(imgData)
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      pdf.save(`${copy.no || 'quotation'}.pdf`)
+      toast('Quotation saved as PDF.')
+    } catch {
+      toast('Could not create PDF. Try Print / PDF instead.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const printQuote = (qt: Quote) => {
+    setView(qt)
+    setSaving(true)
+    try {
+      setTimeout(() => window.print(), 400)
+    } catch {
+      toast('Could not print.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveQuote = () => {
+    persistQuote()
   }
 
   const filteredQuotes = quotes.filter((r) => {
@@ -806,12 +845,14 @@ export default function App() {
                   <Input type="number" min={0} className="num !w-24 font-bold text-blue-600 dark:text-blue-400" value={manualTotal !== null ? manualTotal : t.total} onChange={(e) => { const val = Number(e.target.value); if (!isNaN(val)) { setManualTotal(val); setQ(prev => ({ ...prev, discount: Math.max(0, prev.items.reduce((s, i) => s + i.qty * i.price, 0) - val), discountType: '₱' as const })) } }} />
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2">
-                  <Button className="w-full sm:w-auto" onClick={() => saveQuote(true)}><Save size={15} /> Save quotation</Button>
-                  <Button variant="outline" onClick={() => saveQuote(false)}>Save draft</Button>
+                  <Button className="w-full sm:w-auto" onClick={() => saveQuote() }><Save size={15} /> Save quotation</Button>
+                  <Button variant="outline" onClick={() => saveQuote() }>Save draft</Button>
                   <Button variant="outline" onClick={() => setTab('quotes')}><FolderOpen size={15} /> Load</Button>
-                  <Button variant="secondary" className="w-full sm:w-auto" disabled={saving} onClick={() => { const copy = persistQuote(); if (copy) downloadQuoteImage(copy) }}><Download size={15} /> {saving ? 'Rendering…' : 'Save as image'}</Button>
+                  <Button variant="secondary" className="w-full sm:w-auto" disabled={saving} onClick={downloadQuoteImage}><Download size={15} /> {saving ? 'Rendering…' : 'Save as image'}</Button>
+                  <Button variant="secondary" className="w-full sm:w-auto" disabled={saving} onClick={downloadQuotePDF}><FileText size={15} /> Save as PDF</Button>
                 </div>
                 <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => { const copy = persistQuote(); if (copy) printQuote(copy) }}><Printer size={15} /> Print quotation</Button>
                   <Button variant="ghost" size="sm" className="flex-1" onClick={resetQuote}>Clear</Button>
                 </div>
               </CardContent></Card>
@@ -1081,7 +1122,7 @@ export default function App() {
           <div className="max-w-3xl mx-auto">
             <div className="flex justify-end gap-2 mb-3">
               <Button onClick={() => window.print()}><Printer size={15} /> Print / PDF</Button>
-              <Button variant="secondary" disabled={saving} onClick={() => { if (view) downloadQuoteImage(view) }}><Download size={15} /> {saving ? 'Rendering…' : 'Save as image'}</Button>
+              <Button variant="secondary" disabled={saving} onClick={downloadQuoteImage}><Download size={15} /> {saving ? 'Rendering…' : 'Save as image'}</Button>
               <Button variant="secondary" onClick={() => setView(null)}>Close</Button>
             </div>
             <div id="print" className="bg-white text-slate-900 rounded-xl shadow-xl p-8">
