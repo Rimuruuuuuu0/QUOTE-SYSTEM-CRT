@@ -481,6 +481,31 @@ export default function App() {
     persistQuote()
   }
 
+  // Paste image from clipboard into product dialog
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      if (!pf) return
+      if (!e.clipboardData) return
+      for (let i = 0; i < e.clipboardData.items.length; i++) {
+        const item = e.clipboardData.items[i]
+        if (item.type.indexOf('image') === 0) {
+          const blob = item.getAsFile()
+          if (blob) {
+            const reader = new FileReader()
+            reader.onload = () => {
+              setPf((prev) => (prev ? { ...prev, imageUrl: String(reader.result) } : prev))
+            }
+            reader.readAsDataURL(blob)
+            e.preventDefault()
+            break
+          }
+        }
+      }
+    }
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [pf])
+
   const filteredQuotes = quotes.filter((r) => {
     const s = qsearch.toLowerCase()
     const items = Array.isArray(r.items) ? r.items : []
@@ -1160,7 +1185,7 @@ export default function App() {
             <div id="print" className="bg-white text-slate-900 rounded-xl shadow-xl p-8">
               <div className="bg-brand-blue text-white rounded-t-lg px-4 py-2 flex justify-between items-center">
                 <span className="inline-block"><img src="/logo-banner.png" alt="CHRISRANDOMTECH" className="h-24 w-auto object-contain" /></span>
-                <span className="italic">System</span>
+                <span className="italic">Invoice</span>
               </div>
               <div className="flex justify-between border-b-2 border-brand-blue pb-4 pt-3">
                 <div>
@@ -1170,7 +1195,7 @@ export default function App() {
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-slate-600">Date: {view.date}</div>
-                  <div className="text-sm text-slate-600">Quotation & Invoice Guide</div>
+                  <div className="text-sm text-slate-600">Quotation &amp; Invoice Guide</div>
                 </div>
               </div>
               <div className="flex justify-between py-3 text-sm">
