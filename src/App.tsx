@@ -132,6 +132,31 @@ export default function App() {
     return !o
   })
 
+  // Paste image from clipboard into product dialog
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      if (!pf) return
+      if (!e.clipboardData) return
+      for (let i = 0; i < e.clipboardData.items.length; i++) {
+        const item = e.clipboardData.items[i]
+        if (item.type.indexOf('image') === 0) {
+          const blob = item.getAsFile()
+          if (blob) {
+            const reader = new FileReader()
+            reader.onload = () => {
+              setPf((prev) => (prev ? { ...prev, imageUrl: String(reader.result) } : prev))
+            }
+            reader.readAsDataURL(blob)
+            e.preventDefault()
+            break
+          }
+        }
+      }
+    }
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [pf])
+
   const ask = async (text: string) => {
     const query = text.trim()
     if (!query || aloading) return
@@ -480,31 +505,6 @@ export default function App() {
   const saveQuote = () => {
     persistQuote()
   }
-
-  // Paste image from clipboard into product dialog
-  useEffect(() => {
-    const handlePaste = async (e: ClipboardEvent) => {
-      if (!pf) return
-      if (!e.clipboardData) return
-      for (let i = 0; i < e.clipboardData.items.length; i++) {
-        const item = e.clipboardData.items[i]
-        if (item.type.indexOf('image') === 0) {
-          const blob = item.getAsFile()
-          if (blob) {
-            const reader = new FileReader()
-            reader.onload = () => {
-              setPf((prev) => (prev ? { ...prev, imageUrl: String(reader.result) } : prev))
-            }
-            reader.readAsDataURL(blob)
-            e.preventDefault()
-            break
-          }
-        }
-      }
-    }
-    window.addEventListener('paste', handlePaste)
-    return () => window.removeEventListener('paste', handlePaste)
-  }, [pf])
 
   const filteredQuotes = quotes.filter((r) => {
     const s = qsearch.toLowerCase()
