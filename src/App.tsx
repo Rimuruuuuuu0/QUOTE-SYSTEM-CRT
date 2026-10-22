@@ -1192,7 +1192,7 @@ export default function App() {
                   ))}
                 </div>
               )}
-              <div className="py-2 text-sm"><Badge>{view.status}</Badge></div>
+              <div className="py-2 text-sm"></div>
               <table className="w-full text-sm border-collapse">
                 <thead><tr className="bg-brand-bluesoft text-left"><th className="p-2 text-xs text-slate-500 font-medium text-right">QTY</th><th className="p-2 text-xs text-slate-500 font-medium text-left">TYPE</th><th className="p-2 text-xs text-slate-500 font-medium text-left">PRODUCT NAME</th><th className="p-2 text-xs text-slate-500 font-medium text-right">PRICE</th><th className="p-2 text-xs text-slate-500 font-medium text-right">TOTAL</th></tr></thead>
                 <tbody>{(view.items || []).map((it) => {
