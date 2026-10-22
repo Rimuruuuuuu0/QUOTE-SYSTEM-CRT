@@ -778,7 +778,7 @@ export default function App() {
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-700 text-left">
                         <th className="py-2 px-3 text-xs text-slate-500 font-medium w-[52px]">QTY</th>
-                        <th className="py-2 px-3 text-xs text-slate-500 font-medium w-[72px]">TYPE</th>
+                        <th className="py-2 px-3 text-xs text-slate-500 font-medium w-[120px]">TYPE</th>
                         <th className="py-2 px-3 text-xs text-slate-500 font-medium min-w-[200px]">PRODUCT NAME</th>
                         <th className="py-2 px-3 text-xs text-slate-500 font-medium text-right w-[88px]">COST</th>
                         <th className="py-2 px-3 text-xs text-slate-500 font-medium text-right w-[56px]">%</th>
@@ -798,7 +798,7 @@ export default function App() {
                               <Input type="number" min={1} className="num mt-0 text-xs w-16" value={it.qty} onChange={(e) => setItem(i, { qty: Number(e.target.value) })} />
                             </td>
                             <td className="py-2 px-3">
-                              <Input placeholder="Category" className="num mt-0 text-xs" value={it.category || pc} onChange={(e) => setItem(i, { category: e.target.value })} />
+                              <Input placeholder="Category" className="num mt-0 text-xs w-full" value={it.category || pc} onChange={(e) => setItem(i, { category: e.target.value })} />
                             </td>
                             <td className="py-2 px-3">
                               <div className="flex items-start gap-2">
