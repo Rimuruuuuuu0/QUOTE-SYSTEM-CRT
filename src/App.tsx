@@ -777,45 +777,54 @@ export default function App() {
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-700 text-left">
-                        <th className="py-2 px-3 text-xs text-slate-500 font-medium">QTY</th>
-                        <th className="py-2 px-3 text-xs text-slate-500 font-medium">TYPE</th>
-                        <th className="py-2 px-3 text-xs text-slate-500 font-medium">PRODUCT NAME</th>
-                        <th className="py-2 px-3 text-xs text-slate-500 font-medium text-right">COST</th>
-                        <th className="py-2 px-3 text-xs text-slate-500 font-medium text-right">%</th>
-                        <th className="py-2 px-3 text-xs text-slate-500 font-medium text-right">SRP</th>
-                        <th className="py-2 px-3 text-xs text-slate-500 font-medium text-right">AMOUNT</th>
-                        <th className="py-2 px-3 text-xs text-slate-500 font-medium"></th>
+                        <th className="py-2 px-3 text-xs text-slate-500 font-medium w-[52px]">QTY</th>
+                        <th className="py-2 px-3 text-xs text-slate-500 font-medium w-[72px]">TYPE</th>
+                        <th className="py-2 px-3 text-xs text-slate-500 font-medium min-w-[200px]">PRODUCT NAME</th>
+                        <th className="py-2 px-3 text-xs text-slate-500 font-medium text-right w-[88px]">COST</th>
+                        <th className="py-2 px-3 text-xs text-slate-500 font-medium text-right w-[56px]">%</th>
+                        <th className="py-2 px-3 text-xs text-slate-500 font-medium text-right w-[92px]">SRP</th>
+                        <th className="py-2 px-3 text-xs text-slate-500 font-medium text-right w-[96px]">AMOUNT</th>
+                        <th className="py-2 px-3 text-xs text-slate-500 font-medium w-[32px]"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {q.items.map((it, i) => {
                         const src = it.imageUrl || photoOf(products.find((p) => p.id === it.pid) || { imageUrl: '', sku: '' })
                         const pc = it.pid ? products.find((p) => p.id === it.pid)?.category : (it.category || '')
+                        const lineAmount = it.qty * it.price
                         return (
                           <tr key={it.key} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <td className="py-2 px-3">
-                              <Input type="number" min={1} className="num mt-0 text-xs" value={it.qty} onChange={(e) => setItem(i, { qty: Number(e.target.value) })} />
+                            <td className="py-2 px-3 text-right">
+                              <Input type="number" min={1} className="num mt-0 text-xs w-16" value={it.qty} onChange={(e) => setItem(i, { qty: Number(e.target.value) })} />
                             </td>
                             <td className="py-2 px-3">
                               <Input placeholder="Category" className="num mt-0 text-xs" value={it.category || pc} onChange={(e) => setItem(i, { category: e.target.value })} />
                             </td>
                             <td className="py-2 px-3">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-start gap-2">
                                 {src ? <img src={src} alt="" className="h-8 w-8 rounded-md object-cover border shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} /> : null}
-                                <textarea value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} className="bg-transparent border-none focus:ring-0 text-sm min-w-[80px] max-w-[200px] resize-none leading-tight" rows={2} style={{ lineHeight: '1.25' }} />
+                                <textarea value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} className="bg-transparent border-none focus:ring-0 text-sm min-w-[160px] resize-none leading-tight" rows={2} style={{ lineHeight: '1.25' }} />
                               </div>
                             </td>
                             <td className="py-2 px-3 text-right">
-                              <Input type="number" min={0} className="num mt-0 text-xs text-right" value={it.cost || 0} onChange={(e) => setItemCost(i, Number(e.target.value))} />
+                              <Input type="number" min={0} className="num mt-0 text-xs text-right w-20" value={it.cost || 0} onChange={(e) => setItemCost(i, Number(e.target.value))} />
                             </td>
                             <td className="py-2 px-3 text-right">
-                              <Input type="number" min={0} className="num mt-0 text-xs text-right" value={it.margin ?? settings.markup ?? 20} onChange={(e) => setItemMargin(i, Number(e.target.value))} />
+                              <Input type="number" min={0} className="num mt-0 text-xs text-right w-14" value={it.margin ?? settings.markup ?? 20} onChange={(e) => setItemMargin(i, Number(e.target.value))} />
                             </td>
                             <td className="py-2 px-3 text-right">
-                              <Input type="number" min={0} className="num font-medium mt-0 text-xs text-right" value={it.price} onChange={(e) => setItemPrice(i, Number(e.target.value))} />
+                              <Input type="number" min={0} className="num font-medium mt-0 text-xs text-right w-20" value={it.price} onChange={(e) => setItemPrice(i, Number(e.target.value))} />
                             </td>
                             <td className="py-2 px-3 text-right">
-                              <span className="num text-lg font-bold text-[#17263F] dark:text-[#F0F5FA]">{money(it.qty * it.price)}</span>
+                              <Input type="number" min={0} className="num font-bold mt-0 text-xs text-right w-20" value={lineAmount} onChange={(e) => {
+                                const val = Number(e.target.value)
+                                if (!isNaN(val) && val >= 0) {
+                                  const cost = it.cost || 0
+                                  const margin = cost > 0 ? Math.round((val / it.qty / cost - 1) * 100) : 0
+                                  const srp = cost > 0 ? Math.round(val / it.qty) : val
+                                  setItem(i, { price: srp, margin })
+                                }
+                              }} />
                             </td>
                             <td className="py-2 px-3 text-right">
                               <button className="text-slate-400 hover:text-red-600 px-1" title="Remove line" onClick={() => setQ({ ...q, items: q.items.filter((_, xi) => xi !== i) })}><X size={14} /></button>
@@ -826,7 +835,7 @@ export default function App() {
                     </tbody>
                   </table>
                   {!q.items.length && <p className="py-8 text-center text-slate-500">No items yet. Search above to add products.</p>}
-                  {!!q.items.length && <p className="py-2 text-xs text-slate-400">SRP auto-computes from Cost + %. You can still type an SRP manually.</p>}
+                  {!!q.items.length && <p className="py-2 text-xs text-slate-400">SRP auto-computes from Cost + %. Amount edits recompute markup %. You can still type any field manually.</p>}
                 </div>
               </CardContent></Card>
 
