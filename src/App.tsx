@@ -1,19 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
-import { LogOut, Cloud, CloudOff, Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload, Bot, Sun, Moon, Monitor, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { LogOut, Cloud, CloudOff, Plus, FileText, Package, Settings as SettingsIcon, LayoutDashboard, Printer, X, Pencil, Trash2, Save, FolderOpen, Search, Download, Upload, Bot, Sun, Moon, Monitor, ChevronsLeft, ChevronsRight, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input, Textarea, Select } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { importLoyverseCsv } from '@/lib/loyverse'
-import { auth, ensureShared, saveShared, subscribeShared, loadUserProfile, saveUserProfile, subscribeUserProfile } from '@/lib/firebase'
+import { auth, ensureShared, saveShared, subscribeShared, loadUserProfile, saveUserProfile, subscribeUserProfile, loadSuppliers, saveSupplier, deleteSupplier, subscribeSuppliers, importLoyverseCsvToSupplier } from '@/lib/firebase'
 import { useStore, blankQuote, newQuoteNo } from '@/lib/store'
 import { money, photoOf, uid } from '@/lib/utils'
 import { totals, srp, type Product, type Quote, type QuoteItem, type QuoteStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-type Tab = 'dash' | 'new' | 'quotes' | 'products' | 'ai' | 'settings'
+type Tab = 'dash' | 'new' | 'quotes' | 'products' | 'suppliers' | 'ai' | 'settings'
 
 export class CrashBox extends React.Component<{ children: React.ReactNode }, { err: Error | null }> {
   state = { err: null as Error | null }
@@ -42,6 +42,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'new', label: 'New quote', icon: <Plus size={15} /> },
   { id: 'quotes', label: 'Quotes', icon: <FileText size={15} /> },
   { id: 'products', label: 'Products', icon: <Package size={15} /> },
+  { id: 'suppliers', label: 'Suppliers', icon: <Building2 size={15} /> },
   { id: 'ai', label: 'Assistant', icon: <Bot size={15} /> },
   { id: 'settings', label: 'Settings', icon: <SettingsIcon size={15} /> },
 ]
@@ -51,6 +52,7 @@ import { needsVariant } from '@/lib/variants'
 import LoginFX from '@/components/LoginFX'
 import RigShowcase from '@/components/RigShowcase'
 import { CATS } from '@/lib/categories'
+import { Supplier, SupplierProduct } from '@/lib/types'
 
 const useCountUp = (target: number, dur = 700) => {
   const [v, setV] = useState(target)
@@ -94,6 +96,7 @@ export default function App() {
   const savedRef = useRef('')
   const [preparedBy, setPreparedBy] = useState('')
   const [profileUnsub, setProfileUnsub] = useState<(() => void) | null>(null)
+  const [subUnsub, setSubUnsub] = useState<(() => void) | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
     try { return (localStorage.getItem('crt-theme') as 'light' | 'dark' | 'system') || 'system' } catch { return 'system' }
   })
@@ -131,6 +134,12 @@ export default function App() {
     try { localStorage.setItem('crt-rail', o ? 'closed' : 'open') } catch {}
     return !o
   })
+
+  // Supplier state
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [supplierProducts, setSupplierProducts] = useState<SupplierProduct[]>([])
+  const [selSupplier, setSelSupplier] = useState<Supplier | null>(null)
+  const [supImport, setSupImport] = useState<string>('')
 
   // Paste image from clipboard into product dialog
   useEffect(() => {
@@ -233,6 +242,8 @@ export default function App() {
 
   useEffect(() => onAuthStateChanged(auth, (u) => { setUser(u); setAuthReady(true) }), [])
 
+  useEffect(() => onAuthStateChanged(auth, (u) => { setUser(u); setAuthReady(true) }), [])
+
   // Shared store: every account loads the SAME products/quotes, then stays
   // live — a sale on one account updates all accounts within seconds.
   // preparedBy is PER-USER, not shared — stored in users/{uid}.
@@ -240,7 +251,7 @@ export default function App() {
     if (!user) return
     setCloud('loading')
     let unsub: (() => void) | null = null
-    let profileUnsubLocal: (() => void) | null = null
+    let unsubSup: (() => void) | null = null
     ensureShared(user.uid, { products, quotes, settings })
       .then((d) => {
         // Strip preparedBy from shared settings — it belongs to each user, not the shared store
@@ -253,6 +264,7 @@ export default function App() {
         // Load this signed-in user's own preparedBy
         loadUserProfile(user.uid).then((profile) => {
           if (profile?.preparedBy) setPreparedBy(profile.preparedBy)
+          else setPreparedBy(user?.displayName || 'Christian')
         })
 
         unsub = subscribeShared((live) => {
@@ -260,19 +272,24 @@ export default function App() {
           const snap = JSON.stringify(live)
           if (snap === savedRef.current) return // own echo
           const { preparedBy: _, ...sharedSettingsLive } = live.settings
+          // Don't overwrite local quotes if we have newer data (e.g. a just-saved
+          // quote that hasn't been persisted to Firestore yet). Merge new quotes in.
           setProducts(live.products)
-          setQuotes(live.quotes)
+          setQuotes((prev) => {
+            const liveIds = new Set((live.quotes || []).map((q) => q.id))
+            const localOnly = prev.filter((q) => !liveIds.has(q.id))
+            return [...localOnly, ...(live.quotes || [])]
+          })
           setSettings((s) => ({ ...s, ...sharedSettingsLive }))
           savedRef.current = snap
         })
 
-        profileUnsubLocal = subscribeUserProfile(user.uid, (profile) => {
-          if (profile) setPreparedBy(profile.preparedBy || '')
-        })
+        loadSuppliers().then(setSuppliers)
+        unsubSup = subscribeSuppliers(setSuppliers)
       })
       .catch(() => {})
       .finally(() => setCloud('ready'))
-    return () => { if (unsub) unsub(); if (profileUnsubLocal) profileUnsubLocal() }
+    return () => { if (unsub) unsub(); if (unsubSup) unsubSup() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
@@ -429,13 +446,29 @@ export default function App() {
   const persistQuote = (): Quote | null => {
     if (!q.items.length) { alert('Add at least one item before saving.'); return null }
     const copy = JSON.parse(JSON.stringify(q)) as Quote
+    const isNew = !copy.id
+    let newQuotes = quotes
+    let newSettings = settings
     if (copy.id) {
+      newQuotes = quotes.map((x) => (x.id === copy.id ? copy : x))
       setQuotes((prev) => prev.map((x) => (x.id === copy.id ? copy : x)))
     } else {
       copy.id = uid()
+      newQuotes = [copy, ...quotes]
       setQuotes((prev) => [copy, ...prev])
+      newSettings = { ...settings, counter: (settings.counter || 0) + 1 }
       setSettings((s) => ({ ...s, counter: (s.counter || 0) + 1 }))
     }
+    // Update savedRef immediately so subscribeShared doesn't overwrite the new quote
+    // before the debounced save fires (1.5s). Without this, a live Firestore echo
+    // arriving before the save can wipe the just-added quote from local state.
+    // Update savedRef immediately so subscribeShared doesn't overwrite the new quote
+    // before the debounced save fires (1.5s). Without this, a live Firestore echo
+    // arriving before the save can wipe the just-added quote from local state.
+    try {
+      const { preparedBy: _, ...sharedSettings } = newSettings
+      savedRef.current = JSON.stringify({ products, quotes: newQuotes, settings: sharedSettings })
+    } catch {}
     setQ(copy)
     return copy
   }
@@ -567,7 +600,7 @@ export default function App() {
   const importData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f) return
-    f.text().then((txt) => {
+    f.text().then(async (txt) => {
       try {
         const d = JSON.parse(txt)
         if (d.products) setProducts(d.products)
@@ -775,6 +808,17 @@ export default function App() {
                 <div className="flex justify-between items-center"><CardTitle>Customer</CardTitle><span className="num text-sm text-slate-500">{q.no}</span></div>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Input placeholder="Customer name" value={q.customer.name} onChange={(e) => setQ({ ...q, customer: { ...q.customer, name: e.target.value } })} />
+                   <label className="text-sm font-medium text-slate-600 dark:text-slate-300">Mode of Payment
+                     <Select className="mt-1" value={q.paymentMode || ''} onChange={(e) => setQ({ ...q, paymentMode: e.target.value })}>
+                       <option value="">Select mode</option>
+                       <option value="Cash">Cash</option>
+                       <option value="GCash">GCash</option>
+                       <option value="Bank Transfer">Bank Transfer</option>
+                       <option value="Credit Card">Credit Card</option>
+                       <option value="Cheque">Cheque</option>
+                       <option value="Installment">Installment</option>
+                     </Select>
+                   </label>
                   <Input placeholder="Phone or email" value={q.customer.contact} onChange={(e) => setQ({ ...q, customer: { ...q.customer, contact: e.target.value } })} />
                   <Input className="sm:col-span-2" placeholder="Address" value={q.customer.address} onChange={(e) => setQ({ ...q, customer: { ...q.customer, address: e.target.value } })} />
                 </div>
@@ -932,7 +976,7 @@ export default function App() {
                 <Button variant="outline" size="sm" onClick={() => document.getElementById('load-quote-file')?.click()}><Upload size={13} /> Load from file</Button>
                 <input id="load-quote-file" type="file" accept=".json" className="hidden" onChange={(e) => {
                   const f = e.target.files?.[0]; if (!f) return
-                  f.text().then((txt) => {
+                  f.text().then(async (txt) => {
                     try {
                       const d = JSON.parse(txt)
                       const list = Array.isArray(d) ? d : d.quotes || [d]
@@ -1000,7 +1044,7 @@ export default function App() {
                 <Button variant="outline" title="Set all product prices to 0" onClick={() => { if (confirm('Remove ALL prices? Every product price becomes 0.')) setProducts((prev) => prev.map((p) => ({ ...p, price: 0 }))) }}>Clear prices</Button>
                 <input id="loyverse-csv" type="file" accept=".csv" className="hidden" onChange={(e) => {
                   const f = e.target.files?.[0]; if (!f) return
-                  f.text().then((txt) => {
+                  f.text().then(async (txt) => {
                     try {
                       const r = importLoyverseCsv(txt, products)
                       setProducts([...r.products])
@@ -1059,7 +1103,138 @@ export default function App() {
           </section>
         )}
 
-        {tab === 'ai' && (
+        {tab === 'suppliers' && (
+          <section className="space-y-4">
+            <div className="flex flex-wrap gap-3 justify-between items-center">
+              <h1 className="text-2xl font-semibold">Supplier catalog <span className="inline-block h-1.5 w-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-red align-middle ml-1" /></h1>
+              <div className="flex gap-2 flex-wrap">
+                <Button variant="outline" onClick={() => setSelSupplier(null)}>New supplier</Button>
+                <input id="sup-csv" type="file" accept=".csv" className="hidden" onChange={(e) => {
+                  const f = e.target.files?.[0]; if (!f || !selSupplier) return
+                  f.text().then(async (txt) => {
+                    try {
+                      const parsed = await importLoyverseCsvToSupplier(selSupplier.id, txt)
+                      setSupplierProducts([...supplierProducts, ...parsed])
+                      toast(`Imported ${parsed.length} product(s) into ${selSupplier.name}`)
+                    } catch (x: unknown) { alert(x instanceof Error ? x.message : 'Could not read CSV.') }
+                  }); e.target.value = ''
+                }} />
+              </div>
+            </div>
+            
+            <Card>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  {suppliers.map((s) => (
+                    <button key={s.id} onClick={() => setSelSupplier(s)} className={`
+                      inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all
+                      ${selSupplier?.id === s.id ? 'bg-brand-blue text-white shadow-lg' : 'bg-white/60 dark:bg-white/5 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'}
+                    `}>
+                      <div className="flex flex-col">
+                        <span className="font-semibold">{s.name}</span>
+                        <span className="text-xs text-slate-500">{s.contact || ''}</span>
+                      </div>
+                    </button>
+                  ))}
+                  <button onClick={() => setSelSupplier(null)} className="flex flex-col items-center gap-2 rounded-lg px-4 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <Plus size={14} />
+                    <span className="text-xs">New supplier</span>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {selSupplier && (
+              <div className="space-y-4">
+                <Card className="border-t-4 border-brand-blue">
+                  <CardHeader className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className="text-brand-bluedark text-lg font-bold">{selSupplier.name}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => document.getElementById('sup-csv')?.click()}>
+                        <Upload size={13} /> Import CSV
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setSelSupplier(null)}>Back</Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex gap-4 pt-2">
+                      <div className="flex-1">
+                        <label className="text-xs text-slate-500 uppercase tracking-wide mb-1 block">Supplier name</label>
+                        <Input className="w-full" value={selSupplier.name} onChange={(e) => setSelSupplier({ ...selSupplier, name: e.target.value })} />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-xs text-slate-500 uppercase tracking-wide mb-1 block">Contact</label>
+                        <Input className="w-full" value={selSupplier.contact || ''} onChange={(e) => setSelSupplier({ ...selSupplier, contact: e.target.value })} />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-xs text-slate-500 uppercase tracking-wide mb-1 block">Address</label>
+                        <Input className="w-full" value={selSupplier.address || ''} onChange={(e) => setSelSupplier({ ...selSupplier, address: e.target.value })} />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <Button variant="outline" onClick={() => saveSupplier(selSupplier)}>Save supplier</Button>
+                      <Button variant="outline" onClick={() => { deleteSupplier(selSupplier.id); setSelSupplier(null) }}>Delete supplier</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-t-4 border-brand-blue">
+                  <CardHeader className="flex justify-between items-center">
+                    <span className="text-sm font-semibold">Products in {selSupplier.name}</span>
+                    <Button variant="outline" size="sm" onClick={() => {
+                      const np: SupplierProduct = {
+                        id: `tmp-${Date.now()}`,
+                        supplierId: selSupplier.id,
+                        name: '',
+                        srp: 0
+                      }
+                      setSupplierProducts([...supplierProducts, np])
+                    }}>+ Add product</Button>
+                  </CardHeader>
+                  <CardContent>
+                    <table className="w-full text-sm min-w-[720px]">
+                      <thead className="text-left text-slate-500"><tr className="border-b"><th className="p-3 font-medium">Product name</th><th className="p-3 font-medium text-right">Category</th><th className="p-3 font-medium text-right">Cost</th><th className="p-3 font-medium text-right">SRP</th><th className="p-3 font-medium text-right">SKU</th><th className="p-3 text-right">SKU</th></tr></thead>
+                      <tbody>
+                        {supplierProducts.map((p, idx) => (
+                          <tr key={p.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
+                            <td className="p-3">
+                              <Input className="w-full text-sm" value={p.name} onChange={(e) => { p.name = e.target.value; setSupplierProducts([...supplierProducts]) }} />
+                            </td>
+                            <td className="p-3">
+                              <Input className="w-full text-sm" value={p.category || ''} onChange={(e) => { p.category = e.target.value; setSupplierProducts([...supplierProducts]) }} />
+                            </td>
+                            <td className="num text-right p-3">
+                              <Input type="number" min={0} className="num mt-0 text-xs text-right w-20" value={p.cost || 0} onChange={(e) => { p.cost = Number(e.target.value) || 0; setSupplierProducts([...supplierProducts]) }} />
+                            </td>
+                            <td className="num text-right p-3">
+                              <Input type="number" min={0} className="num mt-0 text-xs text-right w-20" value={p.srp || 0} onChange={(e) => { p.srp = Number(e.target.value) || 0; setSupplierProducts([...supplierProducts]) }} />
+                            </td>
+                            <td className="p-3">
+                              <Input className="w-full text-sm" value={p.sku || ''} onChange={(e) => { p.sku = e.target.value; setSupplierProducts([...supplierProducts]) }} />
+                            </td>
+                            <td className="p-3 text-right">
+                              <button onClick={() => {
+                                const idx = supplierProducts.findIndex(x => x.id === p.id)
+                                supplierProducts.splice(idx, 1)
+                                setSupplierProducts([...supplierProducts])
+                              }} className="text-red-600">Delete</button>
+                            </td>
+                          </tr>
+                        ))}
+                        {supplierProducts.length === 0 && (
+                          <tr><td className="py-8 text-center text-slate-500" colSpan={6}>No products yet. Add products or import CSV.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </section>
+        )}
+          {tab === 'ai' && (
           <section className="max-w-2xl space-y-4">
             <h1 className="text-2xl font-semibold">Assistant <span className="text-sm font-normal text-slate-500">free · offline · uses your catalog</span></h1>
             <Card><CardContent className="space-y-3">
@@ -1208,6 +1383,7 @@ export default function App() {
                 <div className="text-right">
                   <div>Quotation validity: {view.valid}</div>
                   <div>Prepared by: {preparedBy || 'Christian'}</div>
+                  {view.paymentMode && <div>Mode of Payment: {view.paymentMode}</div>}
                 </div>
               </div>
               {(view.items || []).some((it) => it.imageUrl || photoOf(products.find((p) => p.id === it.pid) || { imageUrl: '', sku: '' })) && (
@@ -1233,10 +1409,11 @@ export default function App() {
               </div>
               {view.notes && <div className="mt-6 text-sm text-slate-600 whitespace-pre-line">{view.notes}</div>}
               <div className="mt-6 text-[11px] text-slate-500">If you have any questions concerning this quotation, please contact us.<br />Tel No./CP No. {settings.contact}</div>
-            </div>
           </div>
         </div>
-      )}
-    </div>
-  )
+</div>
+)
+}
+</div>
+)
 }

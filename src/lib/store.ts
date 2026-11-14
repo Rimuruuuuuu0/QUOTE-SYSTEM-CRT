@@ -19,6 +19,7 @@ export const blankQuote = (): Quote => ({
   discountType: '%',
   notes: 'Prices are subject to change without notice. Warranty per manufacturer terms.',
   status: 'Draft',
+  paymentMode: '',
 })
 
 const defaultSettings: Settings = {

@@ -59,6 +59,8 @@ export interface Quote {
   discountType: '%' | '₱'
   notes: string
   status: QuoteStatus
+  /** Mode of payment (e.g. Cash, GCash, Bank Transfer, Credit Card). */
+  paymentMode?: string
 }
 
 export interface Settings {
@@ -87,4 +89,26 @@ export function totals(r: Pick<Quote, 'items' | 'discount' | 'discountType'>) {
   const disc = Math.min(d, sub)
   const total = sub - disc
   return { sub, disc, cost, total, profit: total - cost }
+}
+
+/** A supplier company — each supplier has their own product catalog. */
+export interface Supplier {
+  id: string
+  name: string
+  contact?: string
+  address?: string
+  logoUrl?: string
+  createdAt?: number
+}
+
+/** A product inside a supplier's catalog. Linked to main Product by linkedProductId. */
+export interface SupplierProduct {
+  id: string
+  supplierId: string
+  name: string
+  category?: string
+  cost?: number
+  srp?: number
+  sku?: string
+  stock?: number
 }

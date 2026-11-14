@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp, onSnapshot, type Unsubscribe } from 'firebase/firestore'
-import type { Product, Quote, Settings } from './types'
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp, onSnapshot, collection, getDocs, type Unsubscribe } from 'firebase/firestore'
+import type { Product, Quote, Settings, Supplier, SupplierProduct } from './types'
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAVooE9a4b1dGNrU89zIJwItN-I-p0Q7sQ',
@@ -91,4 +91,99 @@ export function subscribeUserProfile(uid: string, cb: (d: { preparedBy?: string 
     (snap) => cb(snap.exists() ? { preparedBy: snap.data().preparedBy || undefined } : null),
     () => {}
   )
+}
+
+/** ---------- Supplier Cloud Data ---------- */
+
+const suppliersRef = collection(db, 'suppliers')
+
+export async function loadSuppliers(): Promise<Supplier[]> {
+  const snap = await getDocs(suppliersRef)
+  return snap.docs.map((d) => ({ ...(d.data() as Supplier), id: d.id }))
+}
+
+export async function saveSupplier(s: Supplier): Promise<void> {
+  await setDoc(doc(db, 'suppliers', s.id), { ...s, updatedAt: serverTimestamp() }, { merge: true })
+}
+
+export async function deleteSupplier(sid: string): Promise<void> {
+  await setDoc(doc(db, 'suppliers', sid), { deletedAt: serverTimestamp() }, { merge: true })
+}
+
+export function subscribeSuppliers(cb: (s: Supplier[]) => void): Unsubscribe {
+  return onSnapshot(
+    suppliersRef,
+    (snap) => cb(snap.docs.map((d) => ({ ...(d.data() as Supplier), id: d.id })))
+  )
+}
+
+const supplierProductsRef = (sid: string) => collection(db, 'suppliers', sid, 'products')
+
+export async function loadSupplierProducts(sid: string): Promise<SupplierProduct[]> {
+  const snap = await getDocs(supplierRef(sid))
+  return snap.docs.map((d) => ({ ...(d.data() as SupplierProduct), id: d.id }))
+}
+
+export async function saveSupplierProduct(sid: string, p: SupplierProduct): Promise<void> {
+  await setDoc(doc(supplierRef(sid), p.id), { ...p, updatedAt: serverTimestamp() }, { merge: true })
+}
+
+export function subscribeSupplierProducts(sid: string, cb: (p: SupplierProduct[]) => void): Unsubscribe {
+  return onSnapshot(
+    supplierRef(sid),
+    (snap) => cb(snap.docs.map((d) => ({ ...(d.data() as SupplierProduct), id: d.id })))
+  )
+}
+
+export async function deleteSupplierProduct(sid: string, pid: string): Promise<void> {
+  await setDoc(doc(supplierRef(sid), pid), { deletedAt: serverTimestamp() }, { merge: true })
+}
+
+/** Import a CSV row into supplier products. Skips header row by default. */
+export function parseLoyverseCsv(text: string, sid: string): SupplierProduct[] {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0)
+  if (lines.length < 2) return []
+  const head = lines[0].split(',').map((h) => h.trim().toLowerCase())
+  const col = (names: string[]) => {
+    for (let i = 0; i < head.length; i++) {
+      if (names.some((n) => head[i] === n || head[i].startsWith(n))) return i
+    }
+    return -1
+  }
+  const iName = col(['name']) < 0 ? col(['item name', 'product']) : col(['name'])
+  const iCat = col(['category'])
+  const iCost = col(['cost', 'supplier cost', 'purchase price'])
+  const iPrice = col(['price', 'srp', 'selling price', 'default price'])
+  const iSku = col(['sku', 'item code', 'barcode'])
+  const iStock = col(['stock', 'qty', 'quantity'])
+
+  const out: SupplierProduct[] = []
+  for (let r = 1; r < lines.length; r++) {
+    const cells = lines[r].split(',').map((c) => c.trim().replace(/^"|"$/g, ''))
+    const name = cells[iName] || ''
+    if (!name) continue
+    out.push({
+      id: `${sid}-${name.replace(/\s+/g, '-')}-${Date.now()}`,
+      supplierId: sid,
+      name,
+      category: iCat >= 0 ? cells[iCat] : '',
+      cost: iCost >= 0 ? Number(cells[iCost]) || 0 : undefined,
+      srp: iPrice >= 0 ? Number(cells[iPrice]) || 0 : undefined,
+      sku: iSku >= 0 ? cells[iSku] : '',
+      stock: iStock >= 0 ? Number(cells[iStock]) || 0 : undefined,
+    })
+  }
+  return out
+}
+
+export async function importLoyverseCsvToSupplier(sid: string, text: string): Promise<SupplierProduct[]> {
+  const parsed = parseLoyverseCsv(text, sid)
+  for (const p of parsed) {
+    await saveSupplierProduct(sid, p)
+  }
+  return parsed
+}
+
+function supplierRef(sid: string) {
+  return collection(db, 'suppliers', sid, 'products')
 }
