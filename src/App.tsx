@@ -1109,6 +1109,18 @@ export default function App() {
               <h1 className="text-2xl font-semibold">Supplier catalog <span className="inline-block h-1.5 w-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-red align-middle ml-1" /></h1>
               <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" onClick={() => setSelSupplier({ id: '', name: '', contact: '', address: '', createdAt: Date.now() })}>New supplier</Button>
+                 <Button variant="outline" onClick={() => document.getElementById('sup-pdf')?.click()}><Upload size={13} /> Add PDF</Button>
+                 <Button variant="outline" onClick={() => document.getElementById('sup-excel')?.click()}><Upload size={13} /> Add Excel</Button>
+                 <input id="sup-pdf" type="file" accept=".pdf" className="hidden" onChange={(e) => {
+                   const f = e.target.files?.[0]; if (!f || !selSupplier) return
+                   alert('PDF import: Please convert your PDF to CSV first, or use the CSV import option. PDF parsing requires additional libraries.')
+                   e.target.value = ''
+                 }} />
+                 <input id="sup-excel" type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => {
+                   const f = e.target.files?.[0]; if (!f || !selSupplier) return
+                   alert('Excel import: Please convert your Excel file to CSV first, or use the CSV import option. Excel parsing requires additional libraries.')
+                   e.target.value = ''
+                 }} />
                 <input id="sup-csv" type="file" accept=".csv" className="hidden" onChange={(e) => {
                   const f = e.target.files?.[0]; if (!f || !selSupplier) return
                   f.text().then(async (txt) => {
