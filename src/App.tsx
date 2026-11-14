@@ -1182,12 +1182,12 @@ export default function App() {
                           saveSupplier(updated).then(() => {
                             setSuppliers((prev) => [...prev, updated])
                             toast('Supplier saved.')
-                          }).catch(() => alert('Could not save supplier.'))
+                          }).catch((err) => alert('Could not save supplier: ' + (err instanceof Error ? err.message : String(err))))
                         } else {
                           saveSupplier(selSupplier).then(() => {
                             setSuppliers((prev) => prev.map((s) => s.id === selSupplier.id ? selSupplier : s))
                             toast('Supplier saved.')
-                          }).catch(() => alert('Could not save supplier.'))
+                          }).catch((err) => alert('Could not save supplier: ' + (err instanceof Error ? err.message : String(err))))
                         }
                       }}>Save supplier</Button>
                       <Button variant="outline" onClick={() => { deleteSupplier(selSupplier.id); setSelSupplier(null) }}>Delete supplier</Button>
