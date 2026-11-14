@@ -1108,7 +1108,7 @@ export default function App() {
             <div className="flex flex-wrap gap-3 justify-between items-center">
               <h1 className="text-2xl font-semibold">Supplier catalog <span className="inline-block h-1.5 w-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-red align-middle ml-1" /></h1>
               <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" onClick={() => setSelSupplier(null)}>New supplier</Button>
+                <Button variant="outline" onClick={() => setSelSupplier({ id: '', name: '', contact: '', address: '', createdAt: Date.now() })}>New supplier</Button>
                 <input id="sup-csv" type="file" accept=".csv" className="hidden" onChange={(e) => {
                   const f = e.target.files?.[0]; if (!f || !selSupplier) return
                   f.text().then(async (txt) => {
@@ -1136,7 +1136,7 @@ export default function App() {
                       </div>
                     </button>
                   ))}
-                  <button onClick={() => setSelSupplier(null)} className="flex flex-col items-center gap-2 rounded-lg px-4 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <button onClick={() => setSelSupplier({ id: '', name: '', contact: '', address: '', createdAt: Date.now() })} className="flex flex-col items-center gap-2 rounded-lg px-4 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
                     <Plus size={14} />
                     <span className="text-xs">New supplier</span>
                   </button>
@@ -1174,7 +1174,22 @@ export default function App() {
                       </div>
                     </div>
                     <div className="flex gap-2 mt-2">
-                      <Button variant="outline" onClick={() => saveSupplier(selSupplier)}>Save supplier</Button>
+                      <Button variant="outline" onClick={() => {
+                        if (!selSupplier.id) {
+                          const newId = uid()
+                          const updated = { ...selSupplier, id: newId }
+                          setSelSupplier(updated)
+                          saveSupplier(updated).then(() => {
+                            setSuppliers((prev) => [...prev, updated])
+                            toast('Supplier saved.')
+                          }).catch(() => alert('Could not save supplier.'))
+                        } else {
+                          saveSupplier(selSupplier).then(() => {
+                            setSuppliers((prev) => prev.map((s) => s.id === selSupplier.id ? selSupplier : s))
+                            toast('Supplier saved.')
+                          }).catch(() => alert('Could not save supplier.'))
+                        }
+                      }}>Save supplier</Button>
                       <Button variant="outline" onClick={() => { deleteSupplier(selSupplier.id); setSelSupplier(null) }}>Delete supplier</Button>
                     </div>
                   </CardContent>
