@@ -92,12 +92,22 @@ export function totals(r: Pick<Quote, 'items' | 'discount' | 'discountType'>) {
 }
 
 /** A supplier company — each supplier has their own product catalog. */
+export interface SupplierFile {
+  id: string
+  name: string
+  size: number
+  type: string
+  uploadedAt: number
+}
+
 export interface Supplier {
   id: string
   name: string
   contact?: string
   address?: string
   logoUrl?: string
+  /** Attached catalog files (PDF/Excel/etc.) stored locally in IndexedDB. */
+  files?: SupplierFile[]
   createdAt?: number
 }
 

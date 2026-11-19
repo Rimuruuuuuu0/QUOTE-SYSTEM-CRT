@@ -7,7 +7,8 @@ import { Input, Textarea, Select } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { importLoyverseCsv } from '@/lib/loyverse'
-import { auth, ensureShared, saveShared, subscribeShared, loadUserProfile, saveUserProfile, subscribeUserProfile, loadSuppliers, saveSupplier, deleteSupplier, subscribeSuppliers, importLoyverseCsvToSupplier } from '@/lib/firebase'
+import { auth, ensureShared, saveShared, subscribeShared, loadUserProfile, saveUserProfile, subscribeUserProfile, loadSuppliers, saveSupplier, deleteSupplier, importLoyverseCsvToSupplier, deleteSupplierProduct, saveSupplierProduct } from '@/lib/firebase'
+import { saveLocalFile, listLocalFiles, getLocalFileData, deleteLocalFile, migrateLocalFiles, type LocalFileMeta } from '@/lib/localFiles'
 import { useStore, blankQuote, newQuoteNo } from '@/lib/store'
 import { money, photoOf, uid } from '@/lib/utils'
 import { totals, srp, type Product, type Quote, type QuoteItem, type QuoteStatus } from '@/lib/types'
@@ -138,8 +139,12 @@ export default function App() {
   // Supplier state
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierProducts, setSupplierProducts] = useState<SupplierProduct[]>([])
+  const [supplierFiles, setSupplierFiles] = useState<LocalFileMeta[]>([])
   const [selSupplier, setSelSupplier] = useState<Supplier | null>(null)
   const [supImport, setSupImport] = useState<string>('')
+  const [previewFile, setPreviewFile] = useState<{ name: string; url: string } | null>(null)
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   // Paste image from clipboard into product dialog
   useEffect(() => {
@@ -242,8 +247,6 @@ export default function App() {
 
   useEffect(() => onAuthStateChanged(auth, (u) => { setUser(u); setAuthReady(true) }), [])
 
-  useEffect(() => onAuthStateChanged(auth, (u) => { setUser(u); setAuthReady(true) }), [])
-
   // Shared store: every account loads the SAME products/quotes, then stays
   // live — a sale on one account updates all accounts within seconds.
   // preparedBy is PER-USER, not shared — stored in users/{uid}.
@@ -251,7 +254,6 @@ export default function App() {
     if (!user) return
     setCloud('loading')
     let unsub: (() => void) | null = null
-    let unsubSup: (() => void) | null = null
     ensureShared(user.uid, { products, quotes, settings })
       .then((d) => {
         // Strip preparedBy from shared settings — it belongs to each user, not the shared store
@@ -261,19 +263,18 @@ export default function App() {
         setSettings((s) => ({ ...s, ...sharedSettings }))
         savedRef.current = JSON.stringify({ products: d.products, quotes: d.quotes, settings: sharedSettings })
 
-        // Load this signed-in user's own preparedBy
-        loadUserProfile(user.uid).then((profile) => {
-          if (profile?.preparedBy) setPreparedBy(profile.preparedBy)
-          else setPreparedBy(user?.displayName || 'Christian')
-        })
+        // Prepared by is fixed from the login email (part before @), per account — not editable
+        const emailName = (user?.email || '').split('@')[0]
+        const derivedName = emailName
+          ? emailName.charAt(0).toUpperCase() + emailName.slice(1).toLowerCase()
+          : 'Christian'
+        setPreparedBy(derivedName)
 
         unsub = subscribeShared((live) => {
           if (!live) return
           const snap = JSON.stringify(live)
           if (snap === savedRef.current) return // own echo
           const { preparedBy: _, ...sharedSettingsLive } = live.settings
-          // Don't overwrite local quotes if we have newer data (e.g. a just-saved
-          // quote that hasn't been persisted to Firestore yet). Merge new quotes in.
           setProducts(live.products)
           setQuotes((prev) => {
             const liveIds = new Set((live.quotes || []).map((q) => q.id))
@@ -285,13 +286,18 @@ export default function App() {
         })
 
         loadSuppliers().then(setSuppliers)
-        unsubSup = subscribeSuppliers(setSuppliers)
       })
       .catch(() => {})
       .finally(() => setCloud('ready'))
-    return () => { if (unsub) unsub(); if (unsubSup) unsubSup() }
+    return () => { if (unsub) unsub() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+
+  // Load attached files from local storage for the selected supplier.
+  useEffect(() => {
+    if (!selSupplier) { setSupplierFiles([]); return }
+    listLocalFiles(selSupplier.id).then(setSupplierFiles).catch(() => setSupplierFiles([]))
+  }, [selSupplier])
 
   // Save to the shared store (debounced). Only saves when data differs.
   // preparedBy is NOT saved to shared — it goes to the user's own doc below.
@@ -588,6 +594,18 @@ export default function App() {
     if (pf.id) setProducts((prev) => prev.map((x) => (x.id === pf.id ? { ...pf, id: pf.id! } as Product : x)))
     else setProducts((prev) => [{ ...pf, id: Date.now() } as Product, ...prev])
     setPf(null)
+  }
+
+  const updateSupplierProduct = (id: string, patch: Partial<SupplierProduct>) => {
+    setSupplierProducts((prev) => {
+      const next = prev.map((x) => (x.id === id ? { ...x, ...patch } : x))
+      const updated = next.find((x) => x.id === id)
+      if (selSupplier?.id && updated && !String(id).startsWith('tmp-')) {
+        deleteSupplierProduct(selSupplier.id, updated.id).catch(() => {})
+        saveSupplierProduct(selSupplier.id, updated).catch(() => {})
+      }
+      return next
+    })
   }
 
   const exportData = () => {
@@ -1015,7 +1033,20 @@ export default function App() {
                         </td>
                         <td className="num text-right">{money(totals(r).total)}</td>
                         <td className="p-3 text-right whitespace-nowrap space-x-1">
-                          <Button variant="default" size="sm" onClick={() => { setQ(JSON.parse(JSON.stringify(r))); setTab('new') }}><FolderOpen size={12} /> Load</Button>
+                          <Button variant="default" size="sm" onClick={() => { setManualTotal(null); setQ(JSON.parse(JSON.stringify(r))); setTab('new') }}><FolderOpen size={12} /> Load</Button>
+                          <Button variant="outline" size="sm" title="Duplicate as a new quotation" onClick={() => {
+                            const copy = JSON.parse(JSON.stringify(r)) as Quote
+                            copy.id = null
+                            copy.status = 'Draft'
+                            setManualTotal(null)
+                            setQ(copy)
+                            const saved = persistQuote()
+                            if (saved) {
+                              setQ(saved)
+                              setTab('new')
+                              toast('Duplicated and saved as a new quotation.')
+                            }
+                          }}><Plus size={12} /> Duplicate</Button>
                           <Button variant="outline" size="sm" onClick={() => setView(r)}>View</Button>
                           <Button variant="outline" size="sm" title="Save this quotation to a file" onClick={() => {
                             const a = document.createElement('a')
@@ -1109,18 +1140,6 @@ export default function App() {
               <h1 className="text-2xl font-semibold">Supplier catalog <span className="inline-block h-1.5 w-16 rounded-full bg-gradient-to-r from-brand-blue to-brand-red align-middle ml-1" /></h1>
               <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" onClick={() => setSelSupplier({ id: '', name: '', contact: '', address: '', createdAt: Date.now() })}>New supplier</Button>
-                 <Button variant="outline" onClick={() => document.getElementById('sup-pdf')?.click()}><Upload size={13} /> Add PDF</Button>
-                 <Button variant="outline" onClick={() => document.getElementById('sup-excel')?.click()}><Upload size={13} /> Add Excel</Button>
-                 <input id="sup-pdf" type="file" accept=".pdf" className="hidden" onChange={(e) => {
-                   const f = e.target.files?.[0]; if (!f || !selSupplier) return
-                   alert('PDF import: Please convert your PDF to CSV first, or use the CSV import option. PDF parsing requires additional libraries.')
-                   e.target.value = ''
-                 }} />
-                 <input id="sup-excel" type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => {
-                   const f = e.target.files?.[0]; if (!f || !selSupplier) return
-                   alert('Excel import: Please convert your Excel file to CSV first, or use the CSV import option. Excel parsing requires additional libraries.')
-                   e.target.value = ''
-                 }} />
                 <input id="sup-csv" type="file" accept=".csv" className="hidden" onChange={(e) => {
                   const f = e.target.files?.[0]; if (!f || !selSupplier) return
                   f.text().then(async (txt) => {
@@ -1133,7 +1152,7 @@ export default function App() {
                 }} />
               </div>
             </div>
-            
+
             <Card>
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap gap-3">
@@ -1164,9 +1183,6 @@ export default function App() {
                       <span className="text-brand-bluedark text-lg font-bold">{selSupplier.name}</span>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => document.getElementById('sup-csv')?.click()}>
-                        <Upload size={13} /> Import CSV
-                      </Button>
                       <Button variant="outline" size="sm" onClick={() => setSelSupplier(null)}>Back</Button>
                     </div>
                   </CardHeader>
@@ -1186,37 +1202,87 @@ export default function App() {
                       </div>
                     </div>
                     <div className="flex gap-2 mt-2">
-                      <Button variant="outline" onClick={() => {
-                        if (!selSupplier.id) {
-                          const newId = uid()
-                          const updated = { ...selSupplier, id: newId }
-                          setSelSupplier(updated)
-                          saveSupplier(updated).then(() => {
+                      <Button variant="outline" onClick={async () => {
+                        try {
+                          if (!selSupplier?.name?.trim()) { alert('Enter a supplier name.'); return }
+                          if (!selSupplier.id) {
+                            const newId = uid()
+                            const updated: Supplier = { ...selSupplier, id: newId, createdAt: Date.now() }
+                            await migrateLocalFiles('', newId).catch(() => {})
+                            await saveSupplier(updated)
+                            setSelSupplier(updated)
                             setSuppliers((prev) => [...prev, updated])
                             toast('Supplier saved.')
-                          }).catch((err) => alert('Could not save supplier: ' + (err instanceof Error ? err.message : String(err))))
-                        } else {
-                          saveSupplier(selSupplier).then(() => {
+                          } else {
+                            await saveSupplier(selSupplier)
                             setSuppliers((prev) => prev.map((s) => s.id === selSupplier.id ? selSupplier : s))
                             toast('Supplier saved.')
-                          }).catch((err) => alert('Could not save supplier: ' + (err instanceof Error ? err.message : String(err))))
+                          }
+                        } catch (err) {
+                          alert('Save failed: ' + (err instanceof Error ? err.message : String(err)))
                         }
                       }}>Save supplier</Button>
-                      <Button variant="outline" onClick={() => { deleteSupplier(selSupplier.id); setSelSupplier(null) }}>Delete supplier</Button>
+                      <Button variant="outline" onClick={() => { if (!confirm('Delete supplier "' + selSupplier.name + '"? This cannot be undone.')) return; if (selSupplier.id) { deleteSupplier(selSupplier.id).catch(() => {}) } setSelSupplier(null); setSupplierProducts([]); setSupplierFiles([]) }}>Delete supplier</Button>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="overflow-hidden border-t-4 border-brand-blue">
+                <Card className="border-t-4 border-brand-blue">
+                  <CardHeader className="flex justify-between items-center">
+                    <span className="text-sm font-semibold">Attached files</span>
+                    <label className="inline-flex items-center gap-1 text-sm text-brand-blue hover:underline cursor-pointer">
+                      <Upload size={13} /> Upload files
+                      <input type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.doc,.docx" className="hidden" onChange={async (e) => {
+                        const files = Array.from(e.target.files || [])
+                        if (!files.length || !selSupplier) return
+                        if (!selSupplier.id) { alert('Save the supplier first before attaching files.'); e.target.value = ''; return }
+                        for (const f of files) {
+                          if (f.size > 5 * 1024 * 1024) { alert(f.name + ' is larger than 5MB, skipped.'); continue }
+                          try {
+                            toast('Uploading ' + f.name + '...')
+                            const meta = await saveLocalFile(selSupplier.id, f)
+                            setSupplierFiles((prev) => [...prev, meta])
+                          } catch (err) { alert('Could not upload ' + f.name + ': ' + (err instanceof Error ? err.message : String(err))) }
+                        }
+                        toast('Upload complete.')
+                        e.target.value = ''
+                      }} />
+                    </label>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {supplierFiles.length === 0 && (
+                      <p className="text-xs text-slate-400">No files attached yet. Upload PDFs, spreadsheets, or docs (max 5MB each).</p>
+                    )}
+                    <ul className="space-y-1">
+                      {supplierFiles.map((fl) => (
+                        <li key={fl.id} className="flex items-center justify-between text-sm border rounded px-2 py-1">
+                          <button type="button" onClick={async () => {
+                            setPreviewFile({ name: fl.name, url: "" })
+                            setPreviewLoading(true)
+                            try {
+                              const buf = await getLocalFileData(selSupplier.id, fl.id)
+                              if (!buf) throw new Error("not found")
+                              const blob = new Blob([buf], { type: fl.type || "application/octet-stream" })
+                              const u = URL.createObjectURL(blob)
+                              setPreviewBlobUrl(u)
+                            } catch { setPreviewBlobUrl(null) } finally { setPreviewLoading(false) }
+                          }} className="text-brand-blue hover:underline truncate">{fl.name}</button>
+                          <span className="text-xs text-slate-400 ml-2">{(fl.size / 1024).toFixed(0)} KB</span>
+                          <button type="button" className="text-red-600 text-xs ml-2" onClick={async () => {
+                            try { await deleteLocalFile(selSupplier.id, fl.id) } catch {}
+                            setSupplierFiles((prev) => prev.filter((x) => x.id !== fl.id))
+                          }}>Delete</button>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-t-4 border-brand-blue">
                   <CardHeader className="flex justify-between items-center">
                     <span className="text-sm font-semibold">Products in {selSupplier.name}</span>
                     <Button variant="outline" size="sm" onClick={() => {
-                      const np: SupplierProduct = {
-                        id: `tmp-${Date.now()}`,
-                        supplierId: selSupplier.id,
-                        name: '',
-                        srp: 0
-                      }
+                      const np = { id: 'tmp-' + Date.now(), supplierId: selSupplier.id, name: '', srp: 0 }
                       setSupplierProducts([...supplierProducts, np])
                     }}>+ Add product</Button>
                   </CardHeader>
@@ -1224,28 +1290,29 @@ export default function App() {
                     <table className="w-full text-sm min-w-[720px]">
                       <thead className="text-left text-slate-500"><tr className="border-b"><th className="p-3 font-medium">Product name</th><th className="p-3 font-medium text-right">Category</th><th className="p-3 font-medium text-right">Cost</th><th className="p-3 font-medium text-right">SRP</th><th className="p-3 font-medium text-right">SKU</th><th className="p-3 text-right">SKU</th></tr></thead>
                       <tbody>
-                        {supplierProducts.map((p, idx) => (
+                        {supplierProducts.map((p) => (
                           <tr key={p.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
                             <td className="p-3">
-                              <Input className="w-full text-sm" value={p.name} onChange={(e) => { p.name = e.target.value; setSupplierProducts([...supplierProducts]) }} />
+                              <Input className="w-full text-sm" value={p.name} onChange={(e) => updateSupplierProduct(p.id, { name: e.target.value })} />
                             </td>
                             <td className="p-3">
-                              <Input className="w-full text-sm" value={p.category || ''} onChange={(e) => { p.category = e.target.value; setSupplierProducts([...supplierProducts]) }} />
+                              <Input className="w-full text-sm" value={p.category || ''} onChange={(e) => updateSupplierProduct(p.id, { category: e.target.value })} />
                             </td>
                             <td className="num text-right p-3">
-                              <Input type="number" min={0} className="num mt-0 text-xs text-right w-20" value={p.cost || 0} onChange={(e) => { p.cost = Number(e.target.value) || 0; setSupplierProducts([...supplierProducts]) }} />
+                              <Input type="number" min={0} className="num mt-0 text-xs text-right w-20" value={p.cost || 0} onChange={(e) => updateSupplierProduct(p.id, { cost: Number(e.target.value) || 0 })} />
                             </td>
                             <td className="num text-right p-3">
-                              <Input type="number" min={0} className="num mt-0 text-xs text-right w-20" value={p.srp || 0} onChange={(e) => { p.srp = Number(e.target.value) || 0; setSupplierProducts([...supplierProducts]) }} />
+                              <Input type="number" min={0} className="num mt-0 text-xs text-right w-20" value={p.srp || 0} onChange={(e) => updateSupplierProduct(p.id, { srp: Number(e.target.value) || 0 })} />
                             </td>
                             <td className="p-3">
-                              <Input className="w-full text-sm" value={p.sku || ''} onChange={(e) => { p.sku = e.target.value; setSupplierProducts([...supplierProducts]) }} />
+                              <Input className="w-full text-sm" value={p.sku || ''} onChange={(e) => updateSupplierProduct(p.id, { sku: e.target.value })} />
                             </td>
                             <td className="p-3 text-right">
                               <button onClick={() => {
-                                const idx = supplierProducts.findIndex(x => x.id === p.id)
-                                supplierProducts.splice(idx, 1)
-                                setSupplierProducts([...supplierProducts])
+                                if (selSupplier?.id && !String(p.id).startsWith('tmp-')) {
+                                  deleteSupplierProduct(selSupplier.id, p.id).catch(() => {})
+                                }
+                                setSupplierProducts((prev) => prev.filter((x) => x.id !== p.id))
                               }} className="text-red-600">Delete</button>
                             </td>
                           </tr>
@@ -1260,8 +1327,7 @@ export default function App() {
               </div>
             )}
           </section>
-        )}
-          {tab === 'ai' && (
+        )}          {tab === 'ai' && (
           <section className="max-w-2xl space-y-4">
             <h1 className="text-2xl font-semibold">Assistant <span className="text-sm font-normal text-slate-500">free · offline · uses your catalog</span></h1>
             <Card><CardContent className="space-y-3">
@@ -1316,7 +1382,8 @@ export default function App() {
               <label className="block text-sm">Store name<Input className="mt-1" value={settings.store} onChange={(e) => setSettings({ ...settings, store: e.target.value })} /></label>
               <label className="block text-sm">Company address<Input className="mt-1" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} /></label>
               <label className="block text-sm">Phone or email<Input className="mt-1" value={settings.contact} onChange={(e) => setSettings({ ...settings, contact: e.target.value })} /></label>
-              <label className="block text-sm">Prepared by<Input className="mt-1" placeholder="e.g. Christian" value={preparedBy || ''} onChange={(e) => setPreparedBy(e.target.value)} /></label>
+              <label className="block text-sm">Prepared by (from login)</label>
+              <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">{preparedBy || 'Christian'}</div>
               <label className="block text-sm">Free Gemini key (optional, stays in this browser only)<Input type="password" className="mt-1" placeholder="Paste from aistudio.google.com" value={gemKey} onChange={(e) => { setGemKey(e.target.value); try { localStorage.setItem('gemini-key', e.target.value) } catch {} }} /></label>
               <p className="text-[11px] text-slate-400">Get a free key at aistudio.google.com → Get API key. Never shared to the cloud. Powers Smart answers in the Assistant tab.</p>
               <div className="grid grid-cols-3 gap-3">
