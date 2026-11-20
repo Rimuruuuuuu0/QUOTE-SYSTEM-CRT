@@ -7,7 +7,7 @@ import { Input, Textarea, Select } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { importLoyverseCsv } from '@/lib/loyverse'
-import { auth, ensureShared, saveShared, subscribeShared, loadUserProfile, saveUserProfile, subscribeUserProfile, loadSuppliers, saveSupplier, deleteSupplier, importLoyverseCsvToSupplier, deleteSupplierProduct, saveSupplierProduct } from '@/lib/firebase'
+import { auth, ensureShared, saveShared, subscribeShared, loadUserProfile, saveUserProfile, subscribeUserProfile, loadSuppliers, saveSupplier, deleteSupplier, importLoyverseCsvToSupplier, deleteSupplierProduct, saveSupplierProduct, uploadProductImage, deleteProductImage } from '@/lib/firebase'
 import { saveLocalFile, listLocalFiles, getLocalFileData, deleteLocalFile, migrateLocalFiles, type LocalFileMeta } from '@/lib/localFiles'
 import { useStore, blankQuote, newQuoteNo } from '@/lib/store'
 import { money, photoOf, uid } from '@/lib/utils'
@@ -270,20 +270,32 @@ export default function App() {
           : 'Christian'
         setPreparedBy(derivedName)
 
-        unsub = subscribeShared((live) => {
-          if (!live) return
-          const snap = JSON.stringify(live)
-          if (snap === savedRef.current) return // own echo
-          const { preparedBy: _, ...sharedSettingsLive } = live.settings
-          setProducts(live.products)
-          setQuotes((prev) => {
-            const liveIds = new Set((live.quotes || []).map((q) => q.id))
-            const localOnly = prev.filter((q) => !liveIds.has(q.id))
-            return [...localOnly, ...(live.quotes || [])]
-          })
-          setSettings((s) => ({ ...s, ...sharedSettingsLive }))
-          savedRef.current = snap
-        })
+        unsub = subscribeShared(
+          (live) => {
+            if (!live) return
+            const snap = JSON.stringify(live)
+            if (snap === savedRef.current) return // own echo
+            const { preparedBy: _, ...sharedSettingsLive } = live.settings
+
+            // Merge live products with local products (local wins on id conflicts)
+            const mergedProducts = [...(live.products || [])]
+            for (const lp of products) {
+              if (!mergedProducts.some((cp) => String(cp.id) === String(lp.id))) {
+                mergedProducts.push(lp)
+              }
+            }
+            setProducts(mergedProducts)
+
+            setQuotes((prev) => {
+              const liveIds = new Set((live.quotes || []).map((q) => q.id))
+              const localOnly = prev.filter((q) => !liveIds.has(q.id))
+              return [...localOnly, ...(live.quotes || [])]
+            })
+            setSettings((s) => ({ ...s, ...sharedSettingsLive }))
+            savedRef.current = snap
+          },
+          (err) => console.error('Shared store listener error:', err)
+        )
 
         loadSuppliers().then(setSuppliers)
       })
@@ -433,7 +445,7 @@ export default function App() {
       })
     )
 
-  const changeStatus = (r: Quote, s: QuoteStatus) => {
+  const changeStatus = async (r: Quote, s: QuoteStatus) => {
     if (s === 'Accepted' && r.status !== 'Accepted') {
       if (!confirm(`Mark ${r.no} Accepted and deduct stocks (sold)?`)) return
       adjustStock(r, -1)
@@ -441,12 +453,20 @@ export default function App() {
     }
     if (r.status === 'Accepted' && s !== 'Accepted') adjustStock(r, 1)
     setQuotes((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: s } : x)))
+    try {
+      const { preparedBy: _, ...sharedSettings } = settings
+      saveShared({ products, quotes: quotes.map((x) => (x.id === r.id ? { ...x, status: s } : x)), settings: sharedSettings }).catch(() => {})
+    } catch {}
   }
 
-  const deleteQuote = (r: Quote) => {
+  const deleteQuote = async (r: Quote) => {
     if (!confirm(`Delete ${r.no}?`)) return
     if (r.status === 'Accepted') adjustStock(r, 1)
     setQuotes((prev) => prev.filter((x) => x.id !== r.id))
+    try {
+      const { preparedBy: _, ...sharedSettings } = settings
+      saveShared({ products, quotes: quotes.filter((x) => x.id !== r.id), settings: sharedSettings }).catch(() => {})
+    } catch {}
   }
 
   const persistQuote = (): Quote | null => {
@@ -466,15 +486,19 @@ export default function App() {
       setSettings((s) => ({ ...s, counter: (s.counter || 0) + 1 }))
     }
     // Update savedRef immediately so subscribeShared doesn't overwrite the new quote
-    // before the debounced save fires (1.5s). Without this, a live Firestore echo
-    // arriving before the save can wipe the just-added quote from local state.
-    // Update savedRef immediately so subscribeShared doesn't overwrite the new quote
-    // before the debounced save fires (1.5s). Without this, a live Firestore echo
+    // before the cloud save completes. Without this, a live Firestore echo
     // arriving before the save can wipe the just-added quote from local state.
     try {
       const { preparedBy: _, ...sharedSettings } = newSettings
       savedRef.current = JSON.stringify({ products, quotes: newQuotes, settings: sharedSettings })
     } catch {}
+
+    // Save to cloud immediately so changes persist even if user refreshes right away.
+    try {
+      const { preparedBy: _, ...sharedSettings } = newSettings
+      saveShared({ products, quotes: newQuotes, settings: sharedSettings }).catch(() => {})
+    } catch {}
+
     setQ(copy)
     return copy
   }
@@ -589,10 +613,18 @@ export default function App() {
     setTab('new')
   }
 
-  const saveProduct = () => {
+  const saveProduct = async () => {
     if (!pf || !pf.name.trim()) { alert('Enter a product name.'); return }
-    if (pf.id) setProducts((prev) => prev.map((x) => (x.id === pf.id ? { ...pf, id: pf.id! } as Product : x)))
-    else setProducts((prev) => [{ ...pf, id: Date.now() } as Product, ...prev])
+    if (pf.id) {
+      setProducts((prev) => prev.map((x) => (x.id === pf.id ? { ...pf, id: String(pf.id) } as Product : x)))
+      const p = products.find((x) => x.id === pf.id)
+      if (p) await saveShared({ products: products.map((x) => (x.id === p.id ? { ...p, id: String(p.id) } as Product : x)), quotes, settings }).catch(() => {})
+    } else {
+      const newId = uid()
+      const newProduct = { ...pf, id: newId } as Product
+      setProducts((prev) => [newProduct, ...prev])
+      await saveShared({ products: [newProduct, ...products], quotes, settings }).catch(() => {})
+    }
     setPf(null)
   }
 
@@ -601,7 +633,6 @@ export default function App() {
       const next = prev.map((x) => (x.id === id ? { ...x, ...patch } : x))
       const updated = next.find((x) => x.id === id)
       if (selSupplier?.id && updated && !String(id).startsWith('tmp-')) {
-        deleteSupplierProduct(selSupplier.id, updated.id).catch(() => {})
         saveSupplierProduct(selSupplier.id, updated).catch(() => {})
       }
       return next
@@ -1416,12 +1447,17 @@ export default function App() {
               <Input placeholder="Product name" value={pf.name} onChange={(e) => setPf({ ...pf, name: e.target.value })} />
               {needsVariant(pf.category) && <Input placeholder="Variant (e.g. 8GB, White, 3200MHz)" value={(pf as Product).variant || ''} onChange={(e) => setPf({ ...pf, variant: e.target.value })} />}
               <label className="block text-sm">Photo URL<Input placeholder="https://…" className="mt-1" value={(pf as Product).imageUrl || ''} onChange={(e) => setPf({ ...pf, imageUrl: e.target.value })} /></label>
-              <label className="inline-flex items-center rounded-md border px-4 py-2 text-sm cursor-pointer">Upload photo<input type="file" accept="image/*" className="hidden" onChange={(e) => {
+              <label className="inline-flex items-center rounded-md border px-4 py-2 text-sm cursor-pointer">Upload photo<input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                 const f = e.target.files?.[0]; if (!f) return
-                if (f.size > 700 * 1024) { alert('Photo too big for cloud save. Use under 700KB or paste a URL instead.'); e.target.value = ''; return }
-                const r = new FileReader()
-                r.onload = () => setPf((prev) => prev ? { ...prev, imageUrl: String(r.result) } : prev)
-                r.readAsDataURL(f); e.target.value = ''
+                if (f.size > 5 * 1024 * 1024) { alert('Photo too large (max 5MB).'); e.target.value = ''; return }
+                try {
+                  toast('Uploading photo…')
+                  const id = pf.id || String(Date.now())
+                  const url = await uploadProductImage(f, id)
+                  setPf((prev) => prev ? { ...prev, imageUrl: url } : prev)
+                  toast('Photo uploaded.')
+                } catch (err) { alert('Upload failed: ' + (err instanceof Error ? err.message : String(err))) }
+                e.target.value = ''
               }} /></label>
               {(pf as Product).imageUrl ? <img src={(pf as Product).imageUrl} alt="" className="h-20 w-20 rounded object-cover border" /> : null}
               <Select value={pf.category} onChange={(e) => setPf({ ...pf, category: e.target.value })}>
